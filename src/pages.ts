@@ -2,7 +2,7 @@
 // result of a bank connection, and a status page. No external assets.
 import { config } from "./config.ts";
 
-export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 type Kind = "ok" | "error" | "neutral";
 

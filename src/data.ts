@@ -93,4 +93,4 @@ export function daysAgo(n: number): string {
   return isoDate(new Date(Date.now() - n * 86_400_000));
 }
 
-export const round2 = (n: number) => Math.round(n * 100) / 100;
+const round2 = (n: number) => Math.round(n * 100) / 100;

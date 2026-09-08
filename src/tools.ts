@@ -15,7 +15,7 @@ const fail = (message: string) => ({ content: [{ type: "text" as const, text: me
 class ToolError extends Error {}
 
 /** Accepts an account uid, or your label / the bank's name / IBAN (case-insensitive). */
-export function resolveAccount(ref: string): StoredAccount {
+function resolveAccount(ref: string): StoredAccount {
   const s = store();
   const direct = s.account(ref);
   if (direct) return direct;
