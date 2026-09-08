@@ -37,6 +37,12 @@ export interface PendingAuth {
   started: string;
 }
 
+/** How long a started-but-unfinished bank login stays interesting. */
+export const PENDING_AUTH_TTL_MS = 60 * 60 * 1000;
+
+/** True while a pending authorization is recent enough to still be completed. */
+export const pendingAuthIsLive = (p: PendingAuth, now = Date.now()): boolean => Date.parse(p.started) >= now - PENDING_AUTH_TTL_MS;
+
 export type WatchRule =
   | { type: "balance_below"; amount: number }
   | { type: "balance_above"; amount: number }
@@ -217,8 +223,7 @@ export class Store {
 
   addPendingAuth(p: PendingAuth): void {
     this.update((d) => {
-      const cutoff = Date.now() - 60 * 60 * 1000;
-      for (const [k, v] of Object.entries(d.pending_auth)) if (Date.parse(v.started) < cutoff) delete d.pending_auth[k];
+      for (const [k, v] of Object.entries(d.pending_auth)) if (!pendingAuthIsLive(v)) delete d.pending_auth[k];
       d.pending_auth[p.state] = p;
     });
   }

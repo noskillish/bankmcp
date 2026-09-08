@@ -3,7 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { config, isConfigured } from "./config.ts";
 import { eb, EnableBankingError } from "./enablebanking.ts";
-import { store, type StoredAccount, type WatchRule } from "./store.ts";
+import { pendingAuthIsLive, store, type StoredAccount, type WatchRule } from "./store.ts";
 import { daysAgo, daysLeft, describeAccount, isoDate, simplifyBalances, simplifyTransaction } from "./data.ts";
 import { runWatches } from "./watcher.ts";
 
@@ -151,7 +151,11 @@ export function registerTools(server: McpServer): void {
           accounts: s.accounts().filter((a) => a.session_id === session.id).length,
         });
       }
-      const pending = Object.values(s.data.pending_auth).map((p) => ({ bank: p.bank.name, started: p.started }));
+      // Expired ones are only swept when the next login starts, so filter here
+      // too; listing logins that can no longer be completed just misleads.
+      const pending = Object.values(s.data.pending_auth)
+        .filter((p) => pendingAuthIsLive(p))
+        .map((p) => ({ bank: p.bank.name, started: p.started }));
       return json({ banks, pending_logins: pending, hint: banks.length ? undefined : "No bank connected yet. Use start_consent." });
     }),
   );

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Store } from "../src/store.ts";
+import { PENDING_AUTH_TTL_MS, pendingAuthIsLive, Store } from "../src/store.ts";
 
 const session = (id: string, uid: string, hash: string) => ({
   session_id: id,
@@ -36,4 +36,20 @@ test("pending auth is single use", () => {
   s.addPendingAuth({ state: "st", bank: { name: "B", country: "DK" }, started: new Date().toISOString() });
   assert.equal(s.takePendingAuth("st")?.bank.name, "B");
   assert.equal(s.takePendingAuth("st"), undefined);
+});
+
+test("a pending auth stops being live once it is past the ttl", () => {
+  const at = (ms: number) => ({ state: "st", bank: { name: "B", country: "DK" }, started: new Date(Date.now() - ms).toISOString() });
+  assert.equal(pendingAuthIsLive(at(0)), true);
+  assert.equal(pendingAuthIsLive(at(PENDING_AUTH_TTL_MS - 60_000)), true);
+  assert.equal(pendingAuthIsLive(at(PENDING_AUTH_TTL_MS + 60_000)), false);
+});
+
+test("starting a login sweeps expired pending auths but keeps live ones", () => {
+  const s = new Store(join(mkdtempSync(join(tmpdir(), "bank-")), "store.json"));
+  const started = (ms: number) => new Date(Date.now() - ms).toISOString();
+  s.addPendingAuth({ state: "stale", bank: { name: "B", country: "DK" }, started: started(PENDING_AUTH_TTL_MS + 60_000) });
+  s.addPendingAuth({ state: "recent", bank: { name: "B", country: "DK" }, started: started(60_000) });
+  s.addPendingAuth({ state: "new", bank: { name: "B", country: "DK" }, started: started(0) });
+  assert.deepEqual(Object.keys(s.data.pending_auth).sort(), ["new", "recent"]);
 });
