@@ -120,6 +120,6 @@ switch (command) {
     break;
   }
   default:
-    console.log("Usage: node src/cli.ts <hash-password [password] | check | watch [--force] | trust [--remove]>");
+    console.log("Usage: bankmcp <hash-password [password] | check | watch [--force] | trust [--remove]>");
     process.exit(command ? 1 : 0);
 }
