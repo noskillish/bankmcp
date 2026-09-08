@@ -1,6 +1,6 @@
 {
   "name": "bankmcp",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "BankMCP™: self-hosted, read-only MCP server that lets any AI assistant (Claude, ChatGPT, Mistral, Cursor, or a local model) answer questions about your own bank accounts via open banking (Enable Banking, PSD2)",
   "license": "MIT",
   "type": "module",
