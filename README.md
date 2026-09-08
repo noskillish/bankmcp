@@ -71,6 +71,17 @@ Your browser will warn once about the certificate on localhost, which the
 server made for itself because Enable Banking requires https for the bank
 redirect. Continue past it. Say "connect my bank" and log in at your bank.
 
+To stop the warning coming back, trust that certificate once:
+
+```bash
+npx bankmcp trust        # macOS; asks for your password. --remove undoes it
+```
+
+Nothing installs a trust anchor on its own, so this is yours to opt into. If
+you would rather use a certificate your browser already trusts, point
+`TLS_CERT_PATH` and `TLS_KEY_PATH` at one (`mkcert localhost 127.0.0.1`
+produces a good one) and the server will use it instead of generating its own.
+
 State lives in `~/.bankmcp`. Delete the folder to forget everything.
 
 ### On a server
@@ -276,6 +287,7 @@ npm run dev            # same, with reload and .env
 npm run check          # verify config and the Enable Banking application
 npm run hash-password  # produce ADMIN_PASSWORD_HASH
 npm run watch -- --force   # run all watches once, print what fired
+npm run trust          # trust the generated localhost certificate (macOS)
 npm test               # unit tests (node:test)
 npm run typecheck
 sh scripts/build-mcpb.sh   # Claude Desktop bundle → dist/bankmcp.mcpb
