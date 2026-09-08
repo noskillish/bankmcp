@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "bankmcp",
   "display_name": "BankMCP™",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Your AI now reads your bank. Read-only access to your own bank accounts via open banking (Enable Banking).",
   "long_description": "BankMCP™ connects your own bank accounts to Claude. Read-only, on your own machine. Setup happens in the browser on first use: register a free Enable Banking application, enter its id and key file. Not a bank, not a service; you run it.",
   "author": {
