@@ -15,12 +15,24 @@ async function certificate(): Promise<{ cert: string; key: string }> {
   const certPath = join(config.dataDir, "localhost-cert.pem");
   const keyPath = join(config.dataDir, "localhost-key.pem");
   if (existsSync(certPath) && existsSync(keyPath)) return { cert: readFileSync(certPath, "utf8"), key: readFileSync(keyPath, "utf8") };
+  // Apple caps TLS server certificate lifetime at 398 days; Chrome on macOS
+  // defers to the system verifier and rejects anything longer as ERR_CERT_INVALID,
+  // which offers no click-through. Stay just under the limit.
   const notAfterDate = new Date();
-  notAfterDate.setFullYear(notAfterDate.getFullYear() + 10);
+  notAfterDate.setDate(notAfterDate.getDate() + 397);
   const pems = await selfsigned.generate([{ name: "commonName", value: "localhost" }], {
     keySize: 2048,
     notAfterDate,
-    extensions: [{ name: "subjectAltName", altNames: [{ type: 2, value: "localhost" }, { type: 7, ip: "127.0.0.1" }] }],
+    // selfsigned defaults to sha1, which browsers reject outright as
+    // ERR_CERT_INVALID with no click-through. macOS additionally requires
+    // basicConstraints and an extendedKeyUsage of serverAuth.
+    algorithm: "sha256",
+    extensions: [
+      { name: "basicConstraints", cA: false, critical: true },
+      { name: "keyUsage", digitalSignature: true, keyEncipherment: true, critical: true },
+      { name: "extKeyUsage", serverAuth: true },
+      { name: "subjectAltName", altNames: [{ type: 2, value: "localhost" }, { type: 7, ip: "127.0.0.1" }] },
+    ],
   });
   mkdirSync(config.dataDir, { recursive: true });
   writeFileSync(certPath, pems.cert, { mode: 0o600 });
