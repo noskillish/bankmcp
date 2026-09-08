@@ -5,3 +5,4 @@ secrets/
 *.pem
 .DS_Store
 dist/
+.claude/

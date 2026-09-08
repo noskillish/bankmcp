@@ -292,20 +292,26 @@ Requires Node 24 or newer (runs TypeScript directly, no build step).
 ## Layout
 
 ```
-src/server.ts         Express: /mcp behind OAuth, OAuth endpoints, /callback, status page
-src/auth.ts           single-user OAuth provider, password login page
-src/mcp.ts            McpServer factory (tools + prompts + instructions)
+src/stdio.ts          entry point for npx bankmcp: stdio server plus the localhost https side
+src/server.ts         entry point for a hosted deployment: OAuth, /mcp, callback, status page
+src/app.ts            the Express app shared by both entry points
+src/local.ts          localhost https server and self-signed certificate for local mode
+src/mcp.ts            McpServer factory (tools, prompts, instructions)
 src/tools.ts          the MCP tools
 src/prompts.ts        the MCP prompts
 src/watcher.ts        background rule checks and notifications
+src/auth.ts           single-user OAuth provider
+src/setup.ts          first-run setup: validates and stores id, key and password
+src/pages.ts          the HTML pages: setup, sign-in, connected, status, privacy, terms
+src/config.ts         environment and data-directory configuration
 src/enablebanking.ts  JWT signing and a thin typed API client
 src/store.ts          the JSON state file
 src/data.ts           shaping balances and transactions for an assistant
-src/stdio.ts          local entry point (stdio, used by `npx bankmcp`)
-src/local.ts          localhost https server for setup and the bank redirect in local mode
-src/app.ts            the Express app shared by both modes
 src/cli.ts            check, hash-password, watch
-plugin/               Claude Code plugin with the bank skill
+bin/bankmcp.js        the npx entry; dispatches to stdio or cli
+scripts/              build-mcpb.sh (Claude Desktop bundle), local-chat.ts (Ollama bridge)
+plugin/               Claude Code plugin: setup and deploy skills, bank skill
+docs/                 landing page (GitHub Pages, bankmcp.dk)
 ```
 
 ## What this is, and is not
