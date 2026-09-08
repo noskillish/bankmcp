@@ -6,7 +6,7 @@ import { X509Certificate } from "node:crypto";
 import { join } from "node:path";
 import { createServer as createHttpsServer, type Server } from "node:https";
 import selfsigned from "selfsigned";
-import { config } from "./config.ts";
+import { config, tlsOptions } from "./config.ts";
 import { createApp } from "./app.ts";
 
 let server: Server | undefined;
@@ -26,6 +26,11 @@ export function certificateStillGood(pem: string, now = Date.now()): boolean {
 }
 
 async function certificate(): Promise<{ cert: string; key: string }> {
+  // An explicitly configured certificate wins, so anyone who would rather use
+  // one their browser already trusts (mkcert and friends) can point at it
+  // instead of trusting the generated one. `server.ts` already honours these.
+  const configured = tlsOptions();
+  if (configured) return configured;
   const certPath = join(config.dataDir, "localhost-cert.pem");
   const keyPath = join(config.dataDir, "localhost-key.pem");
   if (existsSync(certPath) && existsSync(keyPath)) {
