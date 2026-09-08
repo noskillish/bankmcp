@@ -2,6 +2,7 @@
 // page and receives the bank redirect. Enable Banking requires https redirect
 // URLs, so a self-signed certificate is created on first run.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { X509Certificate } from "node:crypto";
 import { join } from "node:path";
 import { createServer as createHttpsServer, type Server } from "node:https";
 import selfsigned from "selfsigned";
@@ -11,10 +12,27 @@ import { createApp } from "./app.ts";
 let server: Server | undefined;
 let starting: Promise<string> | undefined;
 
+/** Browsers reject server certificates valid for more than 398 days; earlier versions issued 10-year ones. */
+export function certificateStillGood(pem: string, now = Date.now()): boolean {
+  try {
+    const x = new X509Certificate(pem);
+    const from = Date.parse(x.validFrom);
+    const to = Date.parse(x.validTo);
+    const day = 86_400_000;
+    return to - from <= 398 * day && to - now > 30 * day;
+  } catch {
+    return false;
+  }
+}
+
 async function certificate(): Promise<{ cert: string; key: string }> {
   const certPath = join(config.dataDir, "localhost-cert.pem");
   const keyPath = join(config.dataDir, "localhost-key.pem");
-  if (existsSync(certPath) && existsSync(keyPath)) return { cert: readFileSync(certPath, "utf8"), key: readFileSync(keyPath, "utf8") };
+  if (existsSync(certPath) && existsSync(keyPath)) {
+    const cert = readFileSync(certPath, "utf8");
+    if (certificateStillGood(cert)) return { cert, key: readFileSync(keyPath, "utf8") };
+    console.error("[bank] replacing the stored localhost certificate (too long-lived or about to expire)");
+  }
   // Apple caps TLS server certificate lifetime at 398 days; Chrome on macOS
   // defers to the system verifier and rejects anything longer as ERR_CERT_INVALID,
   // which offers no click-through. Stay just under the limit.
