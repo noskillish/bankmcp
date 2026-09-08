@@ -3,6 +3,10 @@
 //   node src/cli.ts check               → verifies config and the Enable Banking application
 //   node src/cli.ts watch [--force]     → runs all watches once and prints what fired
 import { createInterface } from "node:readline";
+import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { config, setupProblems } from "./config.ts";
 import { eb, EnableBankingError } from "./enablebanking.ts";
 import { hashPassword } from "./auth.ts";
@@ -86,7 +90,36 @@ switch (command) {
     console.log(JSON.stringify(await runWatches({ force: args.includes("--force") }), null, 2));
     break;
   }
+  // The generated certificate is valid but self-signed, so a browser still
+  // warns about the issuer on every visit. Trusting it is a deliberate step
+  // the account holder takes for their own machine, never something the
+  // server should do to a trust store on its own.
+  case "trust": {
+    const certPath = join(config.dataDir, "localhost-cert.pem");
+    if (!existsSync(certPath)) {
+      console.error(`No certificate at ${certPath} yet. Start the server once so it can generate one.`);
+      process.exit(1);
+    }
+    if (process.platform !== "darwin") {
+      console.log(`This shortcut only knows macOS. The certificate is at:\n  ${certPath}`);
+      console.log("On Linux add it with `certutil -d sql:$HOME/.pki/nssdb -A -t P -n bankmcp -i <cert>`, on Windows with `certutil -addstore -user Root <cert>`.");
+      process.exit(1);
+    }
+    const remove = args.includes("--remove");
+    const argv = remove
+      ? ["remove-trusted-cert", certPath]
+      : ["add-trusted-cert", "-r", "trustRoot", "-k", join(homedir(), "Library/Keychains/login.keychain-db"), certPath];
+    console.log(remove ? "Removing the certificate from your login keychain..." : "Adding the certificate to your login keychain. macOS will ask for your password.");
+    const res = spawnSync("security", argv, { stdio: "inherit" });
+    if (res.status !== 0) {
+      console.error(`security exited with ${res.status ?? res.error?.message}.`);
+      process.exit(1);
+    }
+    console.log(remove ? "Removed. The browser will warn about the certificate again." : "Trusted. Restart the browser, then https://localhost:8080 loads without a warning.");
+    console.log("Re-run this after regenerating the certificate: trust follows the certificate, not the file name.");
+    break;
+  }
   default:
-    console.log("Usage: node src/cli.ts <hash-password [password] | check | watch [--force]>");
+    console.log("Usage: node src/cli.ts <hash-password [password] | check | watch [--force] | trust [--remove]>");
     process.exit(command ? 1 : 0);
 }
