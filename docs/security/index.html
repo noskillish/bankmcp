@@ -3,31 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BankMCP™ · Your AI now reads your bank.</title>
-<meta name="description" content="BankMCP™ is an open-source MCP server for your own bank accounts. You run it yourself. Claude, ChatGPT or any MCP client can read your balances and transactions through Enable Banking. Read-only, self-hosted.">
-<link rel="canonical" href="https://bankmcp.dk/">
+<title>Security · BankMCP™</title>
+<meta name="description" content="Where your bank data goes when you use BankMCP™: read-only access through Enable Banking to a server you run. No payment tools, no stored transactions, no third party.">
+<link rel="canonical" href="https://bankmcp.dk/security/">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
-<meta name="application-name" content="BankMCP™">
 <meta name="theme-color" content="#f5f2ec">
 <meta property="og:site_name" content="BankMCP™">
-<meta property="og:locale" content="en_US">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://bankmcp.dk/">
-<meta property="og:title" content="BankMCP™ · Your AI now reads your bank.">
-<meta property="og:description" content="Open-source MCP server for your own bank accounts. Read-only, on a server you run, through open banking. Works with Claude, ChatGPT or any MCP client.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://bankmcp.dk/security/">
+<meta property="og:title" content="Security · BankMCP™">
+<meta property="og:description" content="Where your bank data goes when you use BankMCP™: read-only access through Enable Banking to a server you run. No payment tools, no stored transactions, no third party.">
 <meta property="og:image" content="https://bankmcp.dk/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="BankMCP™. Your AI now reads your bank.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="BankMCP™ · Your AI now reads your bank.">
-<meta name="twitter:description" content="Open-source MCP server for your own bank accounts. Read-only, on a server you run, through open banking.">
+<meta name="twitter:title" content="Security · BankMCP™">
+<meta name="twitter:description" content="Where your bank data goes when you use BankMCP™: read-only access through Enable Banking to a server you run. No payment tools, no stored transactions, no third party.">
 <meta name="twitter:image" content="https://bankmcp.dk/og.png">
-<link rel="sitemap" type="application/xml" href="https://bankmcp.dk/sitemap.xml">
 <link rel="icon" href="/favicon-48.png" sizes="48x48" type="image/png">
 <link rel="icon" href="/favicon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231a1a1a'/><text x='50' y='70' font-family='Helvetica,Arial,sans-serif' font-weight='700' font-size='58' text-anchor='middle' fill='%23f5f2ec'>B</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -172,121 +167,47 @@
   footer p { font-size: 0.75rem; color: var(--muted); }
   footer nav { gap: 1.25rem; } footer a { font-size: 0.75rem; color: var(--dim); text-decoration: none; } footer a:hover { color: var(--ink); }
 </style>
+<style>
+  .page { padding: 4rem 0 1rem; }
+  @media (min-width: 768px) { .page { padding: 5.5rem 0 1.5rem; } }
+  .page h1 { font-size: clamp(2rem, 4.5vw, 3rem); font-weight: 400; letter-spacing: -0.035em; line-height: 1.1; margin-bottom: 1rem; }
+  .page .lead { font-size: 1.05rem; color: var(--dim); max-width: 600px; font-weight: 300; line-height: 1.6; }
+  main section:first-of-type { border-top: 0; padding-top: 2rem; }
+  .more { margin-top: 2rem; font-size: 0.85rem; color: var(--dim); } .more a { color: var(--ink); }
+  nav a[aria-current] { color: var(--ink); }
+</style>
 <script type="application/ld+json">
 {
  "@context": "https://schema.org",
  "@graph": [
   {
-   "@type": "WebSite",
-   "@id": "https://bankmcp.dk/#website",
-   "url": "https://bankmcp.dk/",
-   "name": "BankMCP™",
-   "alternateName": [
-    "BankMCP",
-    "Bank MCP",
-    "bankmcp"
-   ],
+   "@type": "WebPage",
+   "@id": "https://bankmcp.dk/security/",
+   "url": "https://bankmcp.dk/security/",
+   "name": "Security · BankMCP™",
+   "description": "Where your bank data goes when you use BankMCP™: read-only access through Enable Banking to a server you run. No payment tools, no stored transactions, no third party.",
+   "isPartOf": {
+    "@id": "https://bankmcp.dk/#website"
+   },
+   "about": {
+    "@id": "https://bankmcp.dk/#software"
+   },
    "inLanguage": "en"
   },
   {
-   "@type": "SoftwareApplication",
-   "@id": "https://bankmcp.dk/#software",
-   "name": "BankMCP™",
-   "alternateName": [
-    "BankMCP",
-    "Bank MCP",
-    "bankmcp"
-   ],
-   "url": "https://bankmcp.dk/",
-   "description": "Open-source, self-hosted MCP server that lets an AI assistant read your own bank accounts through Enable Banking. Read-only, one user, no payment tools.",
-   "applicationCategory": "FinanceApplication",
-   "applicationSubCategory": "MCP server",
-   "operatingSystem": "Node.js 24 or later, Docker",
-   "softwareVersion": "0.1.5",
-   "license": "https://github.com/noskillish/bankmcp/blob/main/LICENSE",
-   "isAccessibleForFree": true,
-   "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "EUR"
-   },
-   "downloadUrl": "https://www.npmjs.com/package/bankmcp",
-   "installUrl": "https://github.com/noskillish/bankmcp#setup",
-   "softwareHelp": {
-    "@type": "CreativeWork",
-    "url": "https://github.com/noskillish/bankmcp#readme"
-   },
-   "sameAs": [
-    "https://github.com/noskillish/bankmcp",
-    "https://www.npmjs.com/package/bankmcp"
-   ],
-   "featureList": [
-    "Read balances and transactions of your own bank accounts",
-    "Works with any MCP client",
-    "Runs on your own machine or server",
-    "Open banking via Enable Banking, 2,700+ European banks",
-    "No payment tools"
-   ]
-  },
-  {
-   "@type": "FAQPage",
-   "@id": "https://bankmcp.dk/#faq",
-   "mainEntity": [
+   "@type": "BreadcrumbList",
+   "itemListElement": [
     {
-     "@type": "Question",
-     "name": "What is BankMCP™?",
-     "acceptedAnswer": {
-      "@type": "Answer",
-      "text": "BankMCP™ (also written Bank MCP or bankmcp) is an open-source MCP server for your own bank accounts. You run it yourself. It connects to your banks through Enable Banking and lets an AI assistant read your balances and transactions. It has no payment tools."
-     }
+     "@type": "ListItem",
+     "position": 1,
+     "name": "BankMCP™",
+     "item": "https://bankmcp.dk/"
     },
     {
-     "@type": "Question",
-     "name": "Which AI assistants work with it?",
-     "acceptedAnswer": {
-      "@type": "Answer",
-      "text": "Any client that supports the Model Context Protocol. Claude, ChatGPT, Mistral, Cursor and local models through Ollama are examples. It has been tested with Claude and Ollama."
-     }
-    },
-    {
-     "@type": "Question",
-     "name": "Which banks does it cover?",
-     "acceptedAnswer": {
-      "@type": "Answer",
-      "text": "The banks Enable Banking covers: around 2,700 bank connections in 29 European countries at the time of writing. Enable Banking publishes the list."
-     }
-    },
-    {
-     "@type": "Question",
-     "name": "What does it cost?",
-     "acceptedAnswer": {
-      "@type": "Answer",
-      "text": "The software is free under the MIT licence. Registering at Enable Banking is free for your own accounts. You pay for whatever you run it on, and on your own machine that is nothing."
-     }
-    },
-    {
-     "@type": "Question",
-     "name": "Where does my data go?",
-     "acceptedAnswer": {
-      "@type": "Answer",
-      "text": "From your bank to Enable Banking to your server to your assistant. Your server fetches balances and transactions when asked and does not save them. Nothing goes to the makers of BankMCP™. Your assistant keeps the conversation, as any chat does."
-     }
-    },
-    {
-     "@type": "Question",
-     "name": "Can it make payments?",
-     "acceptedAnswer": {
-      "@type": "Answer",
-      "text": "No. It uses account information access only, which is read-only, and it has no payment tools."
-     }
-    },
-    {
-     "@type": "Question",
-     "name": "How do I run it?",
-     "acceptedAnswer": {
-      "@type": "Answer",
-      "text": "On your machine with npx bankmcp, in Claude Desktop with the bundle from the GitHub releases, or as one container on Railway or Fly. A new server shows a setup page in the browser. There is no hosted version; you deploy your own copy and you are its only user."
-     }
+     "@type": "ListItem",
+     "position": 2,
+     "name": "Security",
+     "item": "https://bankmcp.dk/security/"
     }
    ]
   }
@@ -295,86 +216,23 @@
 </script>
 </head>
 <body>
-
 <header>
   <div class="container">
-    <a class="logo" href="#"><span class="mark">B</span>BankMCP™</a>
+    <a class="logo" href="/"><span class="mark">B</span>BankMCP™</a>
     <nav>
-      <a href="#how">How it works</a>
-      <a href="#safe">What it does</a>
+      <a href="/#how">How it works</a>
+      <a href="/setup/">Setup</a>
+      <a href="/security/" aria-current="page">Security</a>
       <a href="/questions/">Questions</a>
       <a href="https://github.com/noskillish/bankmcp">GitHub</a>
     </nav>
   </div>
 </header>
-
-<div class="hero">
-  <div class="container">
-    <h1>Your AI now reads your bank.</h1>
-    <p class="subtitle">BankMCP™ connects your bank accounts to Claude, ChatGPT or any MCP client. Ask about any account or any transaction. Read-only, on a server you run.</p>
-    <div class="cta-row">
-      <a class="btn btn-primary" href="https://github.com/noskillish/bankmcp#setup">Set it up →</a>
-      <a class="btn btn-secondary" href="https://github.com/noskillish/bankmcp/tree/main/src">View the code</a>
-    </div>
-    <p class="proof"><strong>Standard MCP</strong> · Claude, ChatGPT, Mistral, Cursor, or a local model · <strong>2,700+</strong> European banks via Enable Banking · <strong>MIT</strong></p>
-
-    <div class="chat" aria-label="Example conversation" id="demo">
-      <div class="chat-track">
-      <div class="who r">You</div>
-      <div class="msg me">Has Acme paid the invoice yet?</div>
-      <div class="who">Assistant</div>
-      <div class="tool"><span class="dot"></span><code>get_transactions</code> · Main · last 14 days</div>
-      <div class="msg ai">Not yet. Nothing from Acme since 1 September. Want me to tell you when it lands?</div>
-      <div class="who r">You</div>
-      <div class="msg me">Yes.</div>
-      <div class="who">Assistant</div>
-      <div class="tool"><span class="dot"></span><code>create_watch</code> · credit matching “Acme”</div>
-      <div class="msg ai">Done. I'll message you when it arrives.</div>
-      <div class="who r">You</div>
-      <div class="msg me">Make me a monthly budget from the last three months.</div>
-      <div class="who">Assistant</div>
-      <div class="tool"><span class="dot"></span><code>get_transactions</code> · 5 accounts · June → August · 641 transactions</div>
-      <div class="msg ai">Here is a budget based on the last three months. Eating out is over.</div>
-      <div class="art-wrap">
-      <div class="artifact" aria-label="Example artifact">
-      <div class="head"><h4>September budget</h4><span>Day 7 of 30 · Artifact</span></div>
-      <div class="tiles">
-        <div class="tile"><div class="l">Left to spend</div><div class="v">28,150</div><div class="d">of 42,000 this month</div></div>
-        <div class="tile"><div class="l">Spent so far</div><div class="v">13,850</div><div class="d">on pace for 39,400</div></div>
-        <div class="tile"><div class="l">Saving</div><div class="v">19,300</div><div class="d">32% of income, on track</div></div>
-      </div>
-      <div class="env">
-        <div class="row"><div class="k">Housing</div><div class="track"><div class="fill" style="width:100%"></div></div><div class="v">14,200 <span>/ 14,200 · paid</span></div></div>
-        <div class="row"><div class="k">Groceries</div><div class="track"><div class="fill" style="width:31%"></div></div><div class="v">1,860 <span>/ 6,000</span></div></div>
-        <div class="row"><div class="k">Eating out</div><div class="track"><div class="fill over" style="width:100%"></div></div><div class="v">2,640 <span>/ 2,500 · over</span></div></div>
-        <div class="row"><div class="k">Transport</div><div class="track"><div class="fill" style="width:22%"></div></div><div class="v">510 <span>/ 2,300</span></div></div>
-        <div class="row"><div class="k">Subscriptions</div><div class="track"><div class="fill" style="width:68%"></div></div><div class="v">1,290 <span>/ 1,900</span></div></div>
-        <div class="row"><div class="k">Everything else</div><div class="track"><div class="fill" style="width:29%"></div></div><div class="v">3,350 <span>/ 11,800</span></div></div>
-      </div>
-      <div class="note">Example numbers. The budget is based on three months of transactions; the bars show this month so far.</div>
-      </div>
-    </div>
-        </div>
-    </div>
-  <div class="replay-row"><button type="button" class="replay" id="replay" hidden>Replay ↻</button></div>
-</div>
-</div>
-
-<section id="how">
-  <div class="container">
-    <div class="eyebrow">How it works</div>
-    <h2>Your assistant. Your server. Your bank.</h2>
-    <p class="section-subtitle">Your assistant talks to your server. Your server talks to your bank through Enable Banking, a licensed open-banking provider. Your data passes through Enable Banking on every call and is not stored there. It does not go to the makers of BankMCP™.</p>
-    <div class="steps">
-      <div class="step"><div class="n">01</div><h3>Run your own copy</h3><p>On your machine with <code>npx bankmcp</code>, or as one container on Railway or Fly. A new server shows a setup page in the browser.</p></div>
-      <div class="step"><div class="n">02</div><h3>Register at Enable Banking</h3><p>Free. You get an application and a private key. The setup page shows the values their form asks for.</p></div>
-      <div class="step"><div class="n">03</div><h3>Connect your assistant and your bank</h3><p>Add your server as a connector, sign in with your password, then say <code>connect my bank</code> and log in at your bank.</p></div>
-    </div>
-  </div>
-</section>
-
-
-
+<div class="page"><div class="container">
+  <h1>What BankMCP™ does with your data</h1>
+  <p class="lead">It reads. It does not pay, it does not store your transactions, and it does not send anything to the people who wrote it. This page says what runs where and what you are responsible for.</p>
+</div></div>
+<main>
 <section id="safe">
   <div class="container">
     <div class="eyebrow">What it does</div>
@@ -389,23 +247,14 @@
     </div>
   </div>
 </section>
-
-<section id="faq">
+<section id="flow">
   <div class="container">
-    <div class="eyebrow">Questions</div>
-    <h2>Short answers.</h2>
-    <div class="faq">
-      <div class="q"><h3>What is BankMCP™?</h3><p>BankMCP™ (also written Bank MCP or bankmcp) is an open-source MCP server for your own bank accounts. You run it yourself. It connects to your banks through Enable Banking and lets an AI assistant read your balances and transactions. It has no payment tools.</p></div>
-      <div class="q"><h3>Which AI assistants work with it?</h3><p>Any client that supports the Model Context Protocol. Claude, ChatGPT, Mistral, Cursor and local models through Ollama are examples. It has been tested with Claude and Ollama.</p></div>
-      <div class="q"><h3>Which banks does it cover?</h3><p>The banks Enable Banking covers: around 2,700 bank connections in 29 European countries at the time of writing. Enable Banking publishes the list.</p></div>
-      <div class="q"><h3>What does it cost?</h3><p>The software is free under the MIT licence. Registering at Enable Banking is free for your own accounts. You pay for whatever you run it on, and on your own machine that is nothing.</p></div>
-      <div class="q"><h3>Where does my data go?</h3><p>From your bank to Enable Banking to your server to your assistant. Your server fetches balances and transactions when asked and does not save them. Nothing goes to the makers of BankMCP™. Your assistant keeps the conversation, as any chat does.</p></div>
-      <div class="q"><h3>Can it make payments?</h3><p>No. It uses account information access only, which is read-only, and it has no payment tools.</p></div>
-      <div class="q"><h3>How do I run it?</h3><p>On your machine with <code>npx bankmcp</code>, in Claude Desktop with the bundle from the GitHub releases, or as one container on Railway or Fly. A new server shows a setup page in the browser. There is no hosted version; you deploy your own copy and you are its only user.</p></div>
-    </div>
+    <div class="eyebrow">Data flow</div>
+    <h2>Four hops.</h2>
+    <p class="section-subtitle">Your assistant talks to your server over OAuth. Your server talks to Enable Banking with a signed key. Enable Banking talks to your bank under PSD2. Balances and transactions come back the same way and are not saved on your server or at Enable Banking. Your assistant keeps the conversation, as any chat does.</p>
+    <p class="more"><a href="https://github.com/noskillish/bankmcp#security-notes">Security notes in the README →</a></p>
   </div>
 </section>
-
 <section id="not">
   <div class="container">
     <div class="eyebrow">Open source</div>
@@ -416,7 +265,7 @@
     </div>
   </div>
 </section>
-
+</main>
 <footer>
   <div class="container">
     <p>BankMCP™ is not a bank and does not give financial advice. Not affiliated with Enable Banking, Anthropic or any bank. MIT licence.</p>
@@ -429,60 +278,5 @@
     </nav>
   </div>
 </footer>
-<script>
-  (() => {
-    const chat = document.getElementById("demo");
-    if (!chat) return;
-    const track = chat.querySelector(".chat-track");
-    const items = [...track.children];
-    const pad = 24;
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { items.forEach((el) => el.classList.add("on", "grow")); return; }
-    const texts = new Map(items.filter((el) => el.classList.contains("me")).map((el) => [el, el.textContent]));
-    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-    let shift = 0;
-    const slideTo = (y) => { shift = Math.max(0, y); track.style.transform = `translateY(-${shift}px)`; };
-    const reveal = (el) => {
-      el.classList.add("on");
-      const bottom = el.offsetTop + el.offsetHeight + pad - chat.clientHeight;
-      if (bottom > shift) slideTo(bottom);
-    };
-    const type = async (el) => {
-      const full = texts.get(el); el.textContent = ""; el.classList.add("typing"); reveal(el);
-      for (const ch of full) { el.textContent += ch; await wait(ch === " " ? 55 : 38); }
-      await wait(250); el.classList.remove("typing");
-    };
-    const replay = document.getElementById("replay");
-    const baseHeight = chat.offsetHeight;
-    let running = false;
-    const run = async () => {
-      if (running) return; running = true; replay.hidden = true;
-      items.forEach((el) => { el.classList.remove("on", "grow", "typing"); if (texts.has(el)) el.textContent = texts.get(el); });
-      chat.style.height = baseHeight + "px"; slideTo(0);
-      await wait(400);
-      for (const el of items) {
-        if (el.classList.contains("who")) { reveal(el); continue; }
-        if (el.classList.contains("me")) { await type(el); await wait(500); continue; }
-        if (el.classList.contains("tool")) { await wait(300); reveal(el); await wait(900); continue; }
-        if (el.classList.contains("art-wrap")) {
-          // Final frame: the prompt that asked for the budget at the top, and the card grows if the budget needs more room.
-          const label = items[items.indexOf(el) - 5];
-          el.classList.add("on");
-          const trackTop = track.getBoundingClientRect().top;
-          const top = label.getBoundingClientRect().top - trackTop;
-          const bottom = el.getBoundingClientRect().bottom - trackTop + 6; // +6: the pre-reveal translateY
-          const need = bottom - top + pad * 2;
-          if (need > chat.clientHeight) chat.style.height = need + "px";
-          slideTo(top); // the card's own padding already provides the headroom
-          await wait(500); el.classList.add("grow"); continue;
-        }
-        reveal(el); await wait(1100);
-      }
-      await wait(1200);
-      replay.hidden = false; running = false;
-    };
-    replay.addEventListener("click", run);
-    run();
-  })();
-</script>
 </body>
 </html>

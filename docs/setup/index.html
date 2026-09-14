@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Setup · BankMCP™</title>
+<meta name="description" content="How to run BankMCP™ on your own machine with npx bankmcp or as one container on Railway or Fly, register at Enable Banking, and connect your assistant and your bank.">
+<link rel="canonical" href="https://bankmcp.dk/setup/">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<meta name="theme-color" content="#f5f2ec">
+<meta property="og:site_name" content="BankMCP™">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://bankmcp.dk/setup/">
+<meta property="og:title" content="Setup · BankMCP™">
+<meta property="og:description" content="How to run BankMCP™ on your own machine with npx bankmcp or as one container on Railway or Fly, register at Enable Banking, and connect your assistant and your bank.">
+<meta property="og:image" content="https://bankmcp.dk/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Setup · BankMCP™">
+<meta name="twitter:description" content="How to run BankMCP™ on your own machine with npx bankmcp or as one container on Railway or Fly, register at Enable Banking, and connect your assistant and your bank.">
+<meta name="twitter:image" content="https://bankmcp.dk/og.png">
+<link rel="icon" href="/favicon-48.png" sizes="48x48" type="image/png">
+<link rel="icon" href="/favicon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #f5f2ec; --bg-card: #faf8f4; --ink: #1a1a1a; --dim: #6a6a66; --muted: #a0a09a; --faint: #b5b0aa;
+    --border: #e0ddd6; --border-strong: #c5c2bb; --accent: #c45a2d; --ok: #3d7a4f; --radius: 10px;
+  }
+  html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.6; }
+  .container { max-width: 880px; margin: 0 auto; padding: 0 1.5rem; }
+  @media (min-width: 768px) { .container { padding: 0 2rem; } }
+  code, .mono { font-family: 'JetBrains Mono', monospace; }
+
+  header { border-bottom: 1px solid var(--border); padding: 1.5rem 0; }
+  header .container { display: flex; justify-content: space-between; align-items: center; }
+  .logo { font-size: 1rem; font-weight: 500; letter-spacing: -0.02em; text-decoration: none; color: var(--ink); display: flex; align-items: center; gap: 0.6rem; }
+  .logo .mark { width: 22px; height: 22px; border-radius: 6px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-size: 0.7rem; font-weight: 600; }
+  nav { display: flex; gap: 1.5rem; }
+  nav a { font-size: 0.85rem; color: var(--dim); text-decoration: none; transition: color 0.2s; }
+  nav a:hover { color: var(--ink); }
+  @media (max-width: 520px) { nav a:not(:last-child) { display: none; } }
+
+  .hero { padding: 5rem 0 4rem; }
+  @media (min-width: 768px) { .hero { padding: 7rem 0 5rem; } }
+  .hero h1 { font-size: clamp(2.4rem, 6vw, 4.2rem); font-weight: 400; letter-spacing: -0.04em; line-height: 1.05; margin-bottom: 1.5rem; }
+  .hero h1 .dim { color: inherit; font-weight: inherit; }
+  .subtitle { font-size: clamp(1rem, 1.4vw, 1.2rem); color: var(--dim); max-width: 560px; margin-bottom: 2.5rem; line-height: 1.6; font-weight: 300; }
+  .cta-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.7rem 1.5rem; border-radius: 999px; font-size: 0.85rem; font-weight: 500; text-decoration: none; transition: all 0.2s; }
+  .btn-primary { background: var(--ink); color: #f5f5f3; } .btn-primary:hover { background: #000; }
+  .btn-secondary { background: transparent; color: var(--ink); border: 1px solid var(--border-strong); } .btn-secondary:hover { border-color: var(--ink); }
+  .proof { margin-top: 1.75rem; font-size: 0.82rem; color: var(--muted); font-weight: 300; }
+  .proof strong { color: var(--ink); font-weight: 500; letter-spacing: -0.02em; }
+
+  /* Conversation */
+  .chat { position: relative; margin: 3.5rem 0 0; height: 620px; overflow: hidden; transition: height .6s ease; background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; }
+  .chat .who { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin: 0 0 0.35rem; }
+  .chat .who.r { text-align: right; }
+  .msg { max-width: 82%; padding: 0.7rem 1rem; border-radius: 12px; font-size: 0.92rem; line-height: 1.5; margin-bottom: 0.9rem; }
+  .me { margin-left: auto; background: var(--ink); color: #f5f5f3; border-bottom-right-radius: 4px; }
+  .ai { background: var(--bg); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .ai b { font-weight: 500; font-variant-numeric: tabular-nums; }
+  .tool { font-size: 0.68rem; color: var(--muted); margin: -0.4rem 0 0.9rem 0.25rem; }
+  .tool code { font-size: 0.66rem; color: var(--dim); }
+  .tool .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-right: 0.45rem; vertical-align: middle; }
+
+  /* Animated dialogue, driven by the script at the end of the page */
+  .chat { opacity: 1; }
+  .replay-row { display: flex; justify-content: flex-end; margin-top: .75rem; min-height: 1.4rem; }
+  .replay { font: inherit; font-size: .78rem; color: var(--muted); background: none; border: 0; cursor: pointer; padding: .2rem .4rem; }
+  .replay:hover { color: var(--ink); }
+  [hidden] { display: none !important; }
+  .chat-track { transition: transform .55s cubic-bezier(.2,.7,.2,1); will-change: transform; }
+  .chat-track > * { opacity: 0; transform: translateY(6px); transition: opacity .4s ease, transform .4s ease; }
+  .chat-track > .on { opacity: 1; transform: none; }
+  .msg.me.typing::after { content: ""; display: inline-block; width: 1px; height: .95em; background: #f5f5f3; margin-left: 2px; vertical-align: -2px; animation: caret .8s steps(1) infinite; }
+  @keyframes caret { 50% { opacity: 0; } }
+  .chat::-webkit-scrollbar { display: none; }
+  .art-wrap .artifact { margin-top: 0; }
+  .env .fill { transform-origin: left; transform: scaleX(0); transition: transform .9s cubic-bezier(.2,.7,.2,1); }
+  .art-wrap.grow .env .fill { transform: scaleX(1); }
+  @media (prefers-reduced-motion: reduce) { .chat, .chat-track > *, .env .fill { opacity: 1 !important; transform: none !important; transition: none !important; } .chat { height: auto !important; } }
+
+  section { padding: 4.5rem 0; border-top: 1px solid var(--border); }
+  @media (min-width: 768px) { section { padding: 5.5rem 0; } }
+  .eyebrow { font-size: 0.65rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 1.5rem; }
+  h2 { font-size: clamp(1.5rem, 2.8vw, 2.2rem); font-weight: 400; letter-spacing: -0.03em; line-height: 1.15; max-width: 700px; margin-bottom: 1rem; }
+  h2 .dim { color: inherit; font-weight: inherit; }
+  .section-subtitle { font-size: 0.95rem; color: var(--dim); max-width: 560px; font-weight: 300; line-height: 1.6; }
+
+  .steps { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-top: 2.5rem; }
+  @media (min-width: 768px) { .steps { grid-template-columns: 1fr 1fr 1fr; } }
+  .step { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
+  .step .n { font-size: 0.65rem; color: var(--accent); font-weight: 500; margin-bottom: 0.9rem; }
+  .step h3 { font-size: 0.9rem; font-weight: 500; margin-bottom: 0.5rem; letter-spacing: -0.01em; }
+  .step p { font-size: 0.82rem; color: var(--dim); font-weight: 300; line-height: 1.55; }
+  .step code { font-size: 0.74rem; color: var(--ink); }
+
+  .asks { list-style: none; display: grid; grid-template-columns: 1fr; gap: 0.75rem; margin-top: 2.5rem; }
+  @media (min-width: 640px) { .asks { grid-template-columns: 1fr 1fr; } }
+  .asks li { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; font-size: 0.92rem; font-weight: 300; letter-spacing: -0.005em; }
+  .asks li::before { content: "“"; color: var(--faint); } .asks li::after { content: "”"; color: var(--faint); }
+
+  .facts { display: grid; grid-template-columns: 1fr; gap: 2rem 3rem; margin-top: 2.5rem; }
+  @media (min-width: 640px) { .facts { grid-template-columns: 1fr 1fr; } }
+  .fact h3 { font-size: 0.9rem; font-weight: 500; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.6rem; letter-spacing: -0.01em; }
+  .fact h3::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
+  .fact p { font-size: 0.85rem; color: var(--dim); font-weight: 300; line-height: 1.55; }
+
+  /* Artifact mock */
+  .lead-in { margin-top: 2.5rem; }
+  .lead-in .who { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin: 0 0 0.35rem; }
+  .lead-in .who.r { text-align: right; }
+  .lead-in .tool { margin: 0 0 0.75rem 0.25rem; }
+  .artifact { margin-top: 0; background: var(--bg); background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; }
+  .artifact .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1.25rem; }
+  .artifact .head h4 { font-size: 0.95rem; font-weight: 500; letter-spacing: -0.01em; }
+  .artifact .head span { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
+  .tile { border: 1px solid var(--border); border-radius: var(--radius); padding: 0.9rem 1rem; }
+  .tile .l { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.3rem; }
+  .tile .v { font-size: 1.25rem; font-weight: 400; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .tile .d { font-size: 0.68rem; color: var(--dim); font-weight: 300; margin-top: 0.15rem; }
+  .bars { display: grid; grid-template-columns: 7.5rem 1fr 4.5rem; gap: 0.55rem 0.9rem; align-items: center; font-size: 0.8rem; }
+  .bars .k { color: var(--dim); font-weight: 300; }
+  .bars .b { height: 8px; border-radius: 0 4px 4px 0; background: var(--ink); }
+  .bars .v { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); font-size: 0.78rem; }
+  .bars .k em { font-style: normal; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-left: 0.4rem; }
+  .bars .v s { color: var(--muted); text-decoration: line-through; margin-right: 0.35rem; font-weight: 300; }
+  .bars.budget { grid-template-columns: 9.5rem 1fr 6.5rem; }
+  @media (max-width: 520px) { .bars.budget { grid-template-columns: 6.5rem 1fr 5.5rem; } }
+  .env { display: flex; flex-direction: column; gap: 0.7rem; }
+  .env .row { display: grid; grid-template-columns: 7.5rem 1fr 9rem; gap: 0.9rem; align-items: center; font-size: 0.8rem; }
+  .env .k { color: var(--ink); font-weight: 400; }
+  .env .track { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
+  .env .fill { height: 100%; border-radius: 4px; background: var(--ink); }
+  .env .fill.over { background: var(--accent); }
+  .env .v { text-align: right; font-variant-numeric: tabular-nums; font-size: 0.78rem; }
+  .env .v span { color: var(--muted); font-weight: 300; }
+  @media (max-width: 640px) {
+    .env .row { grid-template-columns: 1fr auto; grid-template-areas: "k v" "track track"; gap: 0.4rem 0.75rem; }
+    .env .k { grid-area: k; } .env .v { grid-area: v; } .env .track { grid-area: track; }
+    .tiles { grid-template-columns: 1fr; gap: 0.5rem; }
+    .tile { padding: 0.75rem 0.9rem; } .tile .v { font-size: 1.1rem; }
+    .artifact { padding: 1rem; } .artifact .head { flex-direction: column; gap: 0.2rem; margin-bottom: 1rem; }
+    .chat { padding: 1rem; height: 560px; } .msg { max-width: 92%; }
+  }
+  .artifact .note { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--muted); font-weight: 300; }
+
+  .faq { margin-top: 2.5rem; max-width: 680px; }
+  .faq .q { border-top: 1px solid var(--border); padding: 1.25rem 0; }
+  .faq .q:last-child { border-bottom: 1px solid var(--border); }
+  .faq h3 { font-size: 0.95rem; font-weight: 500; letter-spacing: -0.01em; margin-bottom: 0.4rem; }
+  .faq p { font-size: 0.88rem; color: var(--dim); font-weight: 300; line-height: 1.6; }
+  .faq code { font-size: 0.8rem; color: var(--ink); }
+  .fine { font-size: 0.82rem; color: var(--dim); font-weight: 300; line-height: 1.65; max-width: 680px; }
+  .fine p + p { margin-top: 0.85rem; } .fine strong { color: var(--ink); font-weight: 500; }
+
+  footer { padding: 3rem 0; border-top: 1px solid var(--border); }
+  footer .container { display: flex; flex-direction: column; gap: 1rem; align-items: center; }
+  @media (min-width: 640px) { footer .container { flex-direction: row; justify-content: space-between; } }
+  footer p { font-size: 0.75rem; color: var(--muted); }
+  footer nav { gap: 1.25rem; } footer a { font-size: 0.75rem; color: var(--dim); text-decoration: none; } footer a:hover { color: var(--ink); }
+</style>
+<style>
+  .page { padding: 4rem 0 1rem; }
+  @media (min-width: 768px) { .page { padding: 5.5rem 0 1.5rem; } }
+  .page h1 { font-size: clamp(2rem, 4.5vw, 3rem); font-weight: 400; letter-spacing: -0.035em; line-height: 1.1; margin-bottom: 1rem; }
+  .page .lead { font-size: 1.05rem; color: var(--dim); max-width: 600px; font-weight: 300; line-height: 1.6; }
+  main section:first-of-type { border-top: 0; padding-top: 2rem; }
+  .more { margin-top: 2rem; font-size: 0.85rem; color: var(--dim); } .more a { color: var(--ink); }
+  nav a[aria-current] { color: var(--ink); }
+</style>
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "WebPage",
+   "@id": "https://bankmcp.dk/setup/",
+   "url": "https://bankmcp.dk/setup/",
+   "name": "Setup · BankMCP™",
+   "description": "How to run BankMCP™ on your own machine with npx bankmcp or as one container on Railway or Fly, register at Enable Banking, and connect your assistant and your bank.",
+   "isPartOf": {
+    "@id": "https://bankmcp.dk/#website"
+   },
+   "about": {
+    "@id": "https://bankmcp.dk/#software"
+   },
+   "inLanguage": "en"
+  },
+  {
+   "@type": "BreadcrumbList",
+   "itemListElement": [
+    {
+     "@type": "ListItem",
+     "position": 1,
+     "name": "BankMCP™",
+     "item": "https://bankmcp.dk/"
+    },
+    {
+     "@type": "ListItem",
+     "position": 2,
+     "name": "Setup",
+     "item": "https://bankmcp.dk/setup/"
+    }
+   ]
+  }
+ ]
+}
+</script>
+</head>
+<body>
+<header>
+  <div class="container">
+    <a class="logo" href="/"><span class="mark">B</span>BankMCP™</a>
+    <nav>
+      <a href="/#how">How it works</a>
+      <a href="/setup/" aria-current="page">Setup</a>
+      <a href="/security/">Security</a>
+      <a href="/questions/">Questions</a>
+      <a href="https://github.com/noskillish/bankmcp">GitHub</a>
+    </nav>
+  </div>
+</header>
+<div class="page"><div class="container">
+  <h1>Setting up BankMCP™</h1>
+  <p class="lead">Two ways to run it: on your own machine, or as one container on a server. Both end with a setup page in the browser. The full guide with every command is in the README.</p>
+</div></div>
+<main>
+<section id="how">
+  <div class="container">
+    <div class="eyebrow">Three steps</div>
+    <h2>Your assistant. Your server. Your bank.</h2>
+    <p class="section-subtitle">Your assistant talks to your server. Your server talks to your bank through Enable Banking, a licensed open-banking provider. Your data passes through Enable Banking on every call and is not stored there. It does not go to the makers of BankMCP™.</p>
+    <div class="steps">
+      <div class="step"><div class="n">01</div><h3>Run your own copy</h3><p>On your machine with <code>npx bankmcp</code>, or as one container on Railway or Fly. A new server shows a setup page in the browser.</p></div>
+      <div class="step"><div class="n">02</div><h3>Register at Enable Banking</h3><p>Free. You get an application and a private key. The setup page shows the values their form asks for.</p></div>
+      <div class="step"><div class="n">03</div><h3>Connect your assistant and your bank</h3><p>Add your server as a connector, sign in with your password, then say <code>connect my bank</code> and log in at your bank.</p></div>
+    </div>
+  </div>
+</section>
+<section id="local">
+  <div class="container">
+    <div class="eyebrow">On your own machine</div>
+    <h2>Local</h2>
+    <p class="section-subtitle">With Node 24 or later installed, run <code>npx -y bankmcp</code> from your MCP client's configuration, or install the Claude Desktop bundle from the GitHub releases. The server listens on <code>https://localhost:8080</code> and shows the setup page there. There is no password in local mode, so anyone with access to your machine has access to the server.</p>
+    <p class="more"><a href="https://github.com/noskillish/bankmcp#setup">Read the setup guide on GitHub →</a></p>
+  </div>
+</section>
+<section id="server">
+  <div class="container">
+    <div class="eyebrow">On a server</div>
+    <h2>Hosted by you</h2>
+    <p class="section-subtitle">Deploy the container to Railway, Fly or any host with a persistent volume, open the URL, and the setup page asks for your Enable Banking application id, the private key file and a password. Then add the server's <code>/mcp</code> URL as a connector in your assistant and sign in with that password.</p>
+    <p class="more"><a href="https://github.com/noskillish/bankmcp#setup">Server setup in the README →</a></p>
+  </div>
+</section>
+</main>
+<footer>
+  <div class="container">
+    <p>BankMCP™ is not a bank and does not give financial advice. Not affiliated with Enable Banking, Anthropic or any bank. MIT licence.</p>
+    <nav>
+      <a href="https://github.com/noskillish/bankmcp">GitHub</a>
+      <a href="/setup/">Setup</a>
+      <a href="/security/">Security</a>
+      <a href="/questions/">Questions</a>
+      <a href="https://enablebanking.com">Enable Banking</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>
