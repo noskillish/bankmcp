@@ -80,6 +80,9 @@ export async function startRegistration(input: RegistrationInput, baseUrl: strin
   const environment = input.environment === "SANDBOX" ? "SANDBOX" : "PRODUCTION";
   const country = (input.country ?? "").trim().toUpperCase() || undefined;
   if (!EMAIL.test(email)) return { error: "Enter the email address of your Enable Banking account, or the one you want to create it with." };
+  if (!config.localMode && !/^https:\/\//.test(baseUrl)) {
+    return { error: `This server does not know its public https address yet (it believes it is ${baseUrl}), and Enable Banking only accepts https redirect URLs. Set BASE_URL on the host, or on Railway generate the domain and redeploy, then try again.` };
+  }
   if (country && !/^[A-Z]{2}$/.test(country)) return { error: "Country should be a two-letter code such as DK." };
 
   const state = randomBytes(16).toString("base64url");
