@@ -85,17 +85,38 @@ State lives in `~/.bankmcp`. Delete the folder to forget everything.
 
 Any container host works. The server needs a persistent volume at `/data`
 and a public https address; it asks you for everything else in the browser.
+A prebuilt image is published on every release:
+`ghcr.io/noskillish/bankmcp` (built by [GitHub Actions](.github/workflows/image.yml)
+from the tagged source, `linux/amd64` and `linux/arm64`).
 
 **Railway:** New Project, Deploy from GitHub repo, pick this repo. Add a
 volume mounted at `/data` and generate a domain (Settings, Networking, port
 8080). The Dockerfile and [railway.json](railway.json) are picked up
 automatically, and the server learns its own address from Railway.
 
-**Docker Compose on your own box:** `docker compose up -d`, then put a TLS
+**Fly.io:** three commands from a checkout, using [fly.toml](fly.toml):
+
+```bash
+fly launch --copy-config --no-deploy   # pick an app name and region
+fly volumes create data --size 1
+fly deploy
+```
+
+**Render:** [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/noskillish/bankmcp)
+uses [render.yaml](render.yaml). Render's persistent disks need a paid
+instance.
+
+**Docker on your own box:**
+
+```bash
+docker run -d --name bankmcp --restart unless-stopped \
+  -p 8080:8080 -v bankmcp-data:/data ghcr.io/noskillish/bankmcp:latest
+```
+
+or `docker compose up -d` with [compose.yaml](compose.yaml). Then put a TLS
 terminator in front (Caddy needs two lines:
 `YOUR-HOST { reverse_proxy localhost:8080 }`) and set `BASE_URL` to the
-public address. Fly.io works like Railway: volume at `/data`, the app name
-gives the address.
+public address.
 
 Open the address. A fresh server shows a setup page.
 
@@ -126,7 +147,7 @@ appears:
 | `EB_APP_ID` | the application id |
 | `EB_PRIVATE_KEY` | the `.pem` contents, base64: `base64 -i app.pem \| tr -d '\n'` |
 | `ADMIN_PASSWORD_HASH` | output of `npm run hash-password` (or set `ADMIN_PASSWORD`) |
-| `BASE_URL` | `https://YOUR-HOST` (Railway and Fly set this for you) |
+| `BASE_URL` | `https://YOUR-HOST` (Railway, Fly and Render set this for you) |
 | `DEFAULT_COUNTRY` | your country code, e.g. `DK` |
 | `APP_NAME` | optional, the name shown on the sign-in and status pages (default `BankMCP™`) |
 

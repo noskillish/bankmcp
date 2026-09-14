@@ -1,9 +1,13 @@
 services:
   bank:
-    build: .
-    image: bank-mcp
+    image: ghcr.io/noskillish/bankmcp:latest
+    # To build from this checkout instead of pulling the image: uncomment
+    # the next line and run `docker compose up -d --build`.
+    # build: .
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       DATA_DIR: /data
       PORT: 8080

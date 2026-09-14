@@ -47,6 +47,7 @@ function detectBaseUrl(): string {
   if (env.BASE_URL) return env.BASE_URL.replace(/\/+$/, "");
   if (env.RAILWAY_PUBLIC_DOMAIN) return `https://${env.RAILWAY_PUBLIC_DOMAIN}`;
   if (env.FLY_APP_NAME) return `https://${env.FLY_APP_NAME}.fly.dev`;
+  if (env.RENDER_EXTERNAL_URL) return env.RENDER_EXTERNAL_URL.replace(/\/+$/, "");
   if (localMode) return `https://localhost:${port}`;
   return `http://localhost:${port}`;
 }

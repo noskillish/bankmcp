@@ -1,0 +1,20 @@
+# Render blueprint. Deploy with https://render.com/deploy?repo=https://github.com/noskillish/bankmcp
+# A persistent disk needs a paid instance on Render; the server learns its
+# address from RENDER_EXTERNAL_URL.
+services:
+  - type: web
+    name: bankmcp
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    healthCheckPath: /healthz
+    autoDeploy: false
+    envVars:
+      - key: DATA_DIR
+        value: /data
+      - key: PORT
+        value: "8080"
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
