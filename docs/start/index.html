@@ -265,7 +265,7 @@
       <div class="step"><div class="n">02</div><h3>Paste the address</h3><p>When the card in Railway turns green it shows an address ending in <code>.up.railway.app</code>. Paste it here. This page waits for the server and opens its setup page.</p>
         <form class="addr" id="addr"><input id="host" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="bankmcp-production-xxxx.up.railway.app"><button type="submit">Check</button></form>
         <p class="status" id="status" hidden></p>
-        <p class="go" id="open" hidden><a class="btn btn-primary" id="openlink" href="#">Open setup →</a></p>
+        <p class="go" id="open" hidden><a class="btn btn-primary" id="openlink" href="#" target="_blank" rel="noopener">Open setup →</a></p>
       </div>
       <div class="step"><div class="n">03</div><h3>Finish setup</h3><p>The setup page asks for an Enable Banking application, free for your own accounts, and a password, and shows the values their form needs with Copy buttons. Then add the connector address to your assistant and say <code>connect my bank</code>.</p></div>
     </div>
@@ -306,7 +306,7 @@
         clearInterval(timer); timer = null;
         link.href = `https://${host}/`;
         if (h.configured) { link.textContent = "Open your server →"; show("Your server is up and already set up.", true); }
-        else { link.textContent = "Open setup →"; show("Your server is up. Opening its setup page.", true); setTimeout(() => { location.href = link.href; }, 1200); }
+        else { link.textContent = "Open setup →"; show("Your server is up.", true); const w = window.open(link.href, "_blank", "noopener"); show(w ? "Your server is up. Its setup page opened in a new tab; this page stays for the next steps." : "Your server is up. Open its setup page in a new tab.", true); }
       } catch {
         // Older servers do not allow cross-origin reads of the health check; a plain probe still tells us it answers.
         try {
