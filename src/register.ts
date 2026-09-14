@@ -69,6 +69,16 @@ async function profileAfter(deps: Deps, idToken: string, uid: string | undefined
   }
 }
 
+/** Enable Banking's own reason from an error body, when there is one. */
+function reason(err: ControlPanelError): string {
+  try {
+    const msg = (JSON.parse(err.body) as { error?: { message?: string } }).error?.message;
+    return msg ? ` (${msg.slice(0, 120)})` : "";
+  } catch {
+    return "";
+  }
+}
+
 /** The application name shown in the user's Control Panel. */
 export function applicationName(): string {
   return config.appName.replace(/[™®]/g, "").trim() || "BankMCP";
@@ -95,7 +105,8 @@ export async function startRegistration(input: RegistrationInput, baseUrl: strin
     await deps.requestSignInLink(email, continueUrl);
   } catch (err) {
     if (err instanceof ControlPanelError && /INVALID_EMAIL/.test(err.body)) return { error: "Enable Banking did not accept that email address." };
-    if (err instanceof ControlPanelError) return { error: `Enable Banking answered ${err.status} when asked to send the sign-in link. You can still register by hand below.` };
+    if (err instanceof ControlPanelError && /TOO_MANY|QUOTA|RATE/i.test(err.body)) return { error: "Enable Banking is holding back sign-in emails to that address for the moment, after several requests. Wait a few minutes and try again, or register by hand below." };
+    if (err instanceof ControlPanelError) return { error: `Enable Banking answered ${err.status} when asked to send the sign-in link${reason(err)}. Wait a moment and try again, or register by hand below.` };
     return { error: `Enable Banking could not be reached (${(err as Error).message}). You can still register by hand below.` };
   }
   pending = { email, environment, country, state, expires: Date.now() + PENDING_TTL_MS };
