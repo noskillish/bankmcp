@@ -1,0 +1,24 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.noskillish/bankmcp",
+  "title": "BankMCP™",
+  "description": "Read-only MCP server for your own bank accounts via Enable Banking. Self-hosted, one user.",
+  "websiteUrl": "https://bankmcp.dk/",
+  "repository": {
+    "url": "https://github.com/noskillish/bankmcp",
+    "source": "github"
+  },
+  "version": "0.1.6",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "bankmcp",
+      "version": "0.1.6",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
