@@ -89,6 +89,10 @@ export class EnableBankingError extends Error {
     this.status = status;
     this.body = body;
   }
+  /** True when Enable Banking refuses because the application has not been activated yet. */
+  get applicationInactive(): boolean {
+    return this.status === 403 && /not active/i.test(this.body);
+  }
   /** True when the bank consent behind this call is no longer usable. */
   get consentGone(): boolean {
     return this.status === 401 || this.status === 403 || this.status === 410 || /session|consent|expired|revoked/i.test(this.body);

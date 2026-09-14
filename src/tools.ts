@@ -50,13 +50,19 @@ function guard<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeo
     try {
       if (!isConfigured()) {
         return fail(
-          `${config.appName} is not set up yet. Open ${config.baseUrl} in a browser: register an application at Enable Banking with the values shown there, then enter the application id and choose the key file.` +
+          `${config.appName} is not set up yet. Tell the owner to open ${config.baseUrl} in a browser and follow the setup page: it can register the Enable Banking application for them from their email, or take an application id and key file.` +
             (config.localMode ? " The browser will warn about a self-signed certificate on localhost; continue past it." : ""),
         );
       }
       return await fn(...args);
     } catch (err) {
       if (err instanceof ToolError) return fail(err.message);
+      if (err instanceof EnableBankingError && err.applicationInactive) {
+        return fail(
+          "The Enable Banking application behind this server is not active yet, so no bank can be reached. This is a one-time step the owner does in their browser, not something to retry here. Tell them exactly this: " +
+            "open https://enablebanking.com/cp/applications, choose the application, press 'Activate by linking accounts' and log in at your bank when asked. Then ask again.",
+        );
+      }
       if (err instanceof EnableBankingError) return fail(`Enable Banking returned ${err.status}: ${err.body.slice(0, 500)}`);
       return fail(`Error: ${(err as Error).message}`);
     }
