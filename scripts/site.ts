@@ -24,9 +24,7 @@ const num = (n: number) => n.toLocaleString("en-US");
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const NAV: [string, string][] = [
-  ["/#how", "How it works"],
   ["/start/", "Get started"],
-  ["/setup/", "Setup"],
   ["/banks/", "Banks"],
   ["/security/", "Security"],
   ["/questions/", "Questions"],
