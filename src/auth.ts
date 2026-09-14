@@ -187,9 +187,15 @@ export class SingleUserProvider implements OAuthServerProvider {
   async exchangeAuthorizationCode(client: OAuthClientInformationFull, authorizationCode: string, _codeVerifier?: string, redirectUri?: string, resource?: URL): Promise<OAuthTokens> {
     const key = sha256(authorizationCode);
     const c = this.store.data.oauth.codes[key];
-    if (!c || c.client_id !== client.client_id || c.expires < now()) throw new InvalidGrantError("Invalid or expired authorization code");
-    if (redirectUri && redirectUri !== c.redirect_uri) throw new InvalidGrantError("redirect_uri does not match");
-    if (resource && c.resource && resource.href !== c.resource) throw new InvalidGrantError("resource does not match");
+    const fail = (why: string) => {
+      console.log(`[bank ${new Date().toISOString()}] token exchange refused for ${client.client_name ?? client.client_id}: ${why}`);
+      return new InvalidGrantError(why);
+    };
+    if (!c) throw fail("unknown authorization code");
+    if (c.client_id !== client.client_id) throw fail("code belongs to another client");
+    if (c.expires < now()) throw fail("authorization code expired");
+    if (redirectUri && redirectUri !== c.redirect_uri) throw fail(`redirect_uri does not match (${redirectUri} vs ${c.redirect_uri})`);
+    if (resource && c.resource && resource.href !== c.resource) throw fail(`resource does not match (${resource.href} vs ${c.resource})`);
     return this.store.update((d) => {
       delete d.oauth.codes[key];
       return this.issue(d.oauth.tokens, client.client_id, c.scopes, c.resource);

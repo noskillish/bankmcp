@@ -9,7 +9,7 @@ import { config, isConfigured, setupProblems } from "./config.ts";
 import { eb, EnableBankingError } from "./enablebanking.ts";
 import { store } from "./store.ts";
 import { SingleUserProvider } from "./auth.ts";
-import { connectedPage, failedPage, loginPage, privacyPage, setupPage, signedInPage, signInFailedPage, statusPage, termsPage } from "./pages.ts";
+import { connectedPage, failedPage, loginPage, privacyPage, returningPage, setupPage, signedInPage, signInFailedPage, statusPage, termsPage } from "./pages.ts";
 import { applySetup, setupAvailable } from "./setup.ts";
 import { createServer, VERSION } from "./mcp.ts";
 import { startWatcher } from "./watcher.ts";
@@ -119,10 +119,20 @@ export function createApp(opts: AppOptions) {
     }),
   );
 
+  // Request trace for the OAuth endpoints (no secrets: query strings and bodies are not logged).
+  if (opts.remote) app.use((req, _res, next) => {
+    if (/^\/(authorize|login|token|register)$/.test(req.path)) log(`${req.method} ${req.path} from ${req.ip} ua="${String(req.headers["user-agent"] ?? "").slice(0, 60)}" referer=${req.headers.referer ? new URL(String(req.headers.referer)).host : "-"}`);
+    next();
+  });
+
   if (opts.remote) app.post("/login", express.urlencoded({ extended: false }), (req, res) => {
     const { request, password } = req.body as Record<string, string | undefined>;
     const result = provider.completeLogin(String(request ?? ""), String(password ?? ""), req.ip ?? "unknown");
-    if ("redirect" in result) return void res.redirect(303, result.redirect);
+    log(`login request=${String(request ?? "").slice(0, 6)}… → ${"redirect" in result ? "redirect to " + new URL(result.redirect).host : "done" in result ? "already done" : "error: " + result.error.slice(0, 40)}`);
+    // A page that forwards at once, not a redirect: the form leaves the screen immediately, so a
+    // second press cannot post it again, and the hop to the assistant is not a form submission
+    // (Chrome applies form-action to redirects that follow one).
+    if ("redirect" in result) return void res.status(200).type("html").send(returningPage(result.redirect));
     if ("done" in result) return void res.status(200).type("html").send(signedInPage());
     if (result.requestId) return void res.status(401).type("html").send(loginPage({ requestId: result.requestId, error: result.error }));
     res.status(400).type("html").send(signInFailedPage(result.error));
@@ -132,7 +142,9 @@ export function createApp(opts: AppOptions) {
 
   const bearer = requireBearerAuth({ verifier: provider, resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(mcpUrl) });
 
-  if (opts.remote) app.post("/mcp", bearer, express.json({ limit: "1mb" }), async (req, res) => {
+  // People paste the bare domain into their assistant as often as the /mcp address. Both work:
+  // the MCP handler is mounted at /mcp and at the root, where GET remains the status page.
+  if (opts.remote) app.post(["/mcp", "/"], bearer, express.json({ limit: "1mb" }), async (req, res) => {
     const server = createServer();
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on("close", () => {

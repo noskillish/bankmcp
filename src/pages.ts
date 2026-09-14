@@ -11,12 +11,12 @@ const fmtDate = (iso: string) => {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 };
 
-export function shell(title: string, body: string, opts: { kind?: Kind; pill?: string } = {}): string {
+export function shell(title: string, body: string, opts: { kind?: Kind; pill?: string; head?: string } = {}): string {
   const name = config.appName;
   const tab = title === name ? name : `${title} · ${name}`;
   const pill = opts.pill ? `<div class="pill ${opts.kind ?? "neutral"}">${esc(opts.pill)}</div>` : "";
   return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark"><title>${esc(tab)}</title>
+<meta name="color-scheme" content="light dark"><title>${esc(tab)}</title>${opts.head ?? ""}
 <style>
   :root{--bg:#f4f3ef;--card:#fff;--ink:#141414;--muted:#6f6e69;--line:#e6e4dd;--ok:#1f7a4d;--err:#b3261e}
   @media (prefers-color-scheme:dark){:root{--bg:#111110;--card:#1b1b1a;--ink:#f2f1ec;--muted:#9b9a94;--line:#2c2b29;--ok:#5cc08a;--err:#ff8a7a}}
@@ -88,6 +88,16 @@ export function connectedPage(session: { aspsp: { name: string }; access: { vali
 
 export function failedPage(message: string): string {
   return shell("Bank not connected", `<p class="error">${esc(message)}</p><p class="muted">Go back to your assistant and start again.</p>`, { kind: "error", pill: "Not connected" });
+}
+
+export function returningPage(url: string): string {
+  const host = new URL(url).host;
+  return shell(
+    "Signed in",
+    `<p>Taking you back to <b>${esc(host)}</b>.</p>
+     <p class="muted">If nothing happens, <a href="${esc(url)}">continue to ${esc(host)}</a>.</p>`,
+    { kind: "ok", pill: "Signed in", head: `<meta http-equiv="refresh" content="0;url=${esc(url)}">` },
+  );
 }
 
 export function signedInPage(): string {
