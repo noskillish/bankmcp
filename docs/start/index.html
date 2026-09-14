@@ -307,7 +307,15 @@
         if (h.configured) { link.textContent = "Open your server →"; show("Your server is running and already set up.", true); }
         else { link.textContent = "Open setup →"; show("Your server is running.", true); }
       } catch {
-        show("Waiting for your server to answer. This can take a minute after Deploy.", false);
+        // Older servers do not allow cross-origin reads of the health check; a plain probe still tells us it answers.
+        try {
+          await fetch(`https://${host}/healthz`, { mode: "no-cors", cache: "no-store" });
+          clearInterval(timer); timer = null;
+          link.href = `https://${host}/`; link.textContent = "Open your server →";
+          show("Your server is answering.", true);
+        } catch {
+          show("Waiting for your server to answer. This can take a minute after Deploy.", false);
+        }
       }
     }
     form.addEventListener("submit", (e) => {
