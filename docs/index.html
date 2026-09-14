@@ -116,6 +116,7 @@
   @media (min-width: 640px) { .facts { grid-template-columns: 1fr 1fr; } }
   .fact h3 { font-size: 0.9rem; font-weight: 500; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.6rem; letter-spacing: -0.01em; }
   .fact h3::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
+  .fact a { color: inherit; text-decoration: underline; text-decoration-color: var(--border-strong); } .fact a:hover { text-decoration-color: var(--ink); }
   .fact p { font-size: 0.85rem; color: var(--dim); font-weight: 300; line-height: 1.55; }
 
   /* Artifact mock */
@@ -303,6 +304,7 @@
     <nav>
       <a href="#how">How it works</a>
       <a href="#safe">What it does</a>
+      <a href="/banks/">Banks</a>
       <a href="/questions/">Questions</a>
       <a href="https://github.com/noskillish/bankmcp">GitHub</a>
     </nav>
@@ -317,7 +319,7 @@
       <a class="btn btn-primary" href="https://github.com/noskillish/bankmcp#setup">Set it up →</a>
       <a class="btn btn-secondary" href="https://github.com/noskillish/bankmcp/tree/main/src">View the code</a>
     </div>
-    <p class="proof"><strong>Standard MCP</strong> · Claude, ChatGPT, Mistral, Cursor, or a local model · <strong>2,700+</strong> European banks via Enable Banking · <strong>MIT</strong><span id="stars" hidden> · <a href="https://github.com/noskillish/bankmcp/stargazers"><strong><span id="stars-n"></span></strong> stars on GitHub</a></span></p>
+    <p class="proof"><strong>Standard MCP</strong> · Claude, ChatGPT, Mistral, Cursor, or a local model · <a href="/banks/"><strong>2,700+</strong> European banks</a> via Enable Banking · <strong>MIT</strong><span id="stars" hidden> · <a href="https://github.com/noskillish/bankmcp/stargazers"><strong><span id="stars-n"></span></strong> stars on GitHub</a></span></p>
 
     <div class="chat" aria-label="Example conversation" id="demo">
       <div class="chat-track">
@@ -385,7 +387,7 @@
       <div class="fact"><h3>Runs on your server</h3><p>The key and the bank consents stay on a server you control. The bank connection itself goes through Enable Banking; that part is not local.</p></div>
       <div class="fact"><h3>Does not store your transactions</h3><p>The server fetches balances and transactions when you ask and does not save them. It keeps your consents, your watches and your login. Your assistant keeps the conversation, as any chat does.</p></div>
       <div class="fact"><h3>Any MCP client</h3><p>Standard MCP, so Claude, ChatGPT, Mistral, Cursor or a local model can connect. Tested with Claude and Ollama.</p></div>
-      <div class="fact"><h3>2,700+ European banks</h3><p>The banks Enable Banking covers. No contract is needed for your own accounts.</p></div>
+      <div class="fact"><h3>2,700+ European banks</h3><p>The banks Enable Banking covers, <a href="/banks/">listed by country</a>. No contract is needed for your own accounts.</p></div>
       <div class="fact"><h3>Easy to stop</h3><p>Change the password, revoke the consent at your bank, or delete the server.</p></div>
     </div>
   </div>
@@ -424,6 +426,7 @@
     <nav>
       <a href="https://github.com/noskillish/bankmcp">GitHub</a>
       <a href="/setup/">Setup</a>
+      <a href="/banks/">Banks</a>
       <a href="/security/">Security</a>
       <a href="/questions/">Questions</a>
       <a href="https://enablebanking.com">Enable Banking</a>

@@ -285,6 +285,8 @@ npm run watch -- --force   # run all watches once, print what fired
 npm test               # unit tests (node:test)
 npm run typecheck
 sh scripts/build-mcpb.sh   # Claude Desktop bundle → dist/bankmcp.mcpb
+npm run banks          # refresh docs/banks/banks.json from Enable Banking's bank list
+npm run site           # build the subpages of the landing page into docs/
 ```
 
 Requires Node 24 or newer (runs TypeScript directly, no build step).
@@ -309,9 +311,9 @@ src/store.ts          the JSON state file
 src/data.ts           shaping balances and transactions for an assistant
 src/cli.ts            check, hash-password, watch
 bin/bankmcp.js        the npx entry; dispatches to stdio or cli
-scripts/              build-mcpb.sh (Claude Desktop bundle), local-chat.ts (Ollama bridge)
+scripts/              build-mcpb.sh (Claude Desktop bundle), banks.ts and site.ts (landing subpages), local-chat.ts (Ollama bridge)
 plugin/               Claude Code plugin: setup and deploy skills, bank skill
-docs/                 landing page (GitHub Pages, bankmcp.dk)
+docs/                 landing page (GitHub Pages, bankmcp.dk); docs/banks holds the bank list and its pages
 ```
 
 ## What this is, and is not

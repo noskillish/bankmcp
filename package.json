@@ -19,7 +19,9 @@
     "chat": "node --env-file-if-exists=.env scripts/local-chat.ts",
     "local": "node bin/bankmcp.js",
     "build": "rm -rf dist/lib && tsc -p tsconfig.build.json",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run build && npm test",
+    "banks": "node --env-file=.env scripts/banks.ts",
+    "site": "node scripts/site.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

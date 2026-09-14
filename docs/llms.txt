@@ -7,6 +7,7 @@ Works with any client that supports the Model Context Protocol: Claude, ChatGPT,
 ## Links
 
 - [Landing page](https://bankmcp.dk/): what it is and what it does
+- [Banks by country](https://bankmcp.dk/banks/): every bank in Enable Banking's list, one page per country, with consent lengths
 - [Source code and setup guide](https://github.com/noskillish/bankmcp): README with setup for local use and for a server
 - [npm package](https://www.npmjs.com/package/bankmcp): run locally with `npx bankmcp`
 - [Releases](https://github.com/noskillish/bankmcp/releases): Claude Desktop bundle (.mcpb)
