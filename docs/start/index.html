@@ -327,7 +327,6 @@
     let timer = null, debounce = null, host = "", opened = false;
     const show = (msg, state) => { status.hidden = false; status.className = "status" + (state ? " " + state : ""); text.textContent = msg; link.hidden = state !== "ok"; };
     const clean = (v) => v.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase();
-    const remember = (h) => { try { localStorage.setItem("bankmcp-host", h); } catch {} };
     const ready = (configured) => {
       clearInterval(timer); timer = null;
       s2.classList.add("done");
@@ -353,20 +352,13 @@
         const h = await r.json();
         ready(Boolean(h.configured));
       } catch {
-        try {
-          await fetch(`https://${host}/healthz`, { mode: "no-cors", cache: "no-store" });
-          clearInterval(timer); timer = null; s2.classList.add("done");
-          link.href = `https://${host}/`; link.textContent = "Open your server →";
-          show("Your server is up.", "ok");
-        } catch {
-          show("Waiting for your server to answer. This can take a minute after Deploy.", "wait");
-        }
+        show("Waiting for your server to answer. This can take a minute after Deploy.", "wait");
       }
     }
     const start = () => {
       host = clean(input.value);
       if (!host || !host.includes(".")) return show("Paste the address Railway shows on the service card.", "err");
-      input.value = host; remember(host);
+      input.value = host;
       if (timer) clearInterval(timer);
       poll(); timer = setInterval(poll, 4000);
     };
@@ -377,7 +369,6 @@
       try { await navigator.clipboard.writeText($("mcpaddr").textContent); b.textContent = "Copied ✓"; b.classList.add("done"); setTimeout(() => { b.textContent = "Copy"; b.classList.remove("done"); }, 1600); }
       catch { b.textContent = "Select and copy"; }
     });
-    try { const saved = localStorage.getItem("bankmcp-host"); if (saved) { input.value = saved; start(); } } catch {}
   })();
 </script>
 <footer>
