@@ -93,7 +93,7 @@ export function createApp(opts: AppOptions) {
       const application = await eb.getApplication().catch(() => undefined);
       return void res.set("Content-Security-Policy", setupCsp).type("html").send(welcomePage({ application, mcpUrl: mcpUrl.href, callbackUrl }));
     }
-    res.type("html").send(statusPage({ problems, mcpUrl: mcpUrl.href, callbackUrl }));
+    res.set("Content-Security-Policy", setupCsp).type("html").send(statusPage({ problems, mcpUrl: mcpUrl.href, callbackUrl }));
   });
 
   app.post("/setup", express.urlencoded({ extended: false, limit: "64kb" }), async (req, res) => {

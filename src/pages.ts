@@ -134,22 +134,31 @@ export function statusPage(input: { problems: string[]; mcpUrl: string; callback
       { kind: "error", pill: "Setup incomplete" },
     );
   }
+  const row = (label: string, value: string) =>
+    `<div class="copy"><p class="muted">${esc(label)}</p><div class="copyrow"><code>${esc(value)}</code><button type="button" class="copybtn" data-copy="${esc(value)}">Copy</button></div></div>`;
+  const script = `<script>
+       for (const b of document.querySelectorAll(".copybtn")) b.addEventListener("click", async () => {
+         try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copied ✓"; b.classList.add("done"); setTimeout(() => { b.textContent = "Copy"; b.classList.remove("done"); }, 1600); }
+         catch { b.textContent = "Select and copy"; }
+       });
+     </script>`;
   // Deliberately says nothing about which banks or accounts are connected:
   // this page is reachable without a password. Ask consent_status through the connector.
   if (config.localMode) {
     return shell(
       config.appName,
       `<p>Running on this machine. Your MCP client is connected to it over stdio.</p>
-       <p class="muted" style="margin-bottom:4px">Redirect URL for the application at Enable Banking</p><p><code>${esc(input.callbackUrl)}</code></p>
-       <p class="muted">To link a bank, ask your assistant to connect it. The browser opens for the bank login and returns here.</p>`,
+       ${row("Redirect URL for the application at Enable Banking", input.callbackUrl)}
+       <p class="muted" style="margin-top:14px">To link a bank, ask your assistant to connect it. The browser opens for the bank login and returns here.</p>${script}`,
       { kind: "ok", pill: "Running locally" },
     );
   }
   return shell(
     config.appName,
-    `<p>Running. Two addresses to copy:</p>
-     <p class="muted" style="margin-bottom:4px">Redirect URL for the application at Enable Banking</p><p><code>${esc(input.callbackUrl)}</code></p>
-     <p class="muted" style="margin-bottom:4px">MCP connector URL for your assistant, Claude, ChatGPT, Cursor or another (sign in with the admin password)</p><p><code>${esc(input.mcpUrl)}</code></p>`,
+    `<p>Running. Two addresses you may need again:</p>
+     ${row("Connector address for your assistant (sign in with your password)", input.mcpUrl)}
+     ${row("Redirect URL that must be among your Enable Banking application's redirect URLs", input.callbackUrl)}
+     <p class="muted small" style="margin-top:14px">If a bank login fails, check the redirect URL first. Forgot the password? Set <code class="inline">ADMIN_PASSWORD</code> on your host and restart; <a href="https://bankmcp.dk/questions/#password" target="_blank" rel="noopener">how</a>.</p>${script}`,
     { kind: "ok", pill: "Running" },
   );
 }
