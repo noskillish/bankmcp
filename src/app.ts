@@ -9,7 +9,7 @@ import { config, isConfigured, setupProblems } from "./config.ts";
 import { eb, EnableBankingError } from "./enablebanking.ts";
 import { store } from "./store.ts";
 import { SingleUserProvider } from "./auth.ts";
-import { connectedPage, failedPage, loginPage, privacyPage, returningPage, setupPage, signedInPage, signInFailedPage, statusPage, termsPage } from "./pages.ts";
+import { connectedPage, failedPage, loginPage, privacyPage, returningPage, setupPage, signedInPage, welcomePage, signInFailedPage, statusPage, termsPage } from "./pages.ts";
 import { applySetup, setupAvailable } from "./setup.ts";
 import { createServer, VERSION } from "./mcp.ts";
 import { startWatcher } from "./watcher.ts";
@@ -85,20 +85,26 @@ export function createApp(opts: AppOptions) {
   // The setup page reads the chosen key file in the browser, which needs one inline script.
   const setupCsp = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
 
-  app.get("/", (_req, res) => {
+  app.get("/", async (req, res) => {
     if (setupAvailable()) return void res.set("Content-Security-Policy", setupCsp).type("html").send(setupPage({ baseUrl: config.baseUrl }));
-    res.type("html").send(statusPage({ problems: setupProblems(), mcpUrl: mcpUrl.href, callbackUrl }));
+    const problems = setupProblems();
+    if ("welcome" in req.query && !problems.length) {
+      // Right after setup: what was checked, and the two things to do next.
+      const application = await eb.getApplication().catch(() => undefined);
+      return void res.set("Content-Security-Policy", setupCsp).type("html").send(welcomePage({ application, mcpUrl: mcpUrl.href, callbackUrl }));
+    }
+    res.type("html").send(statusPage({ problems, mcpUrl: mcpUrl.href, callbackUrl }));
   });
 
-  app.post("/setup", express.urlencoded({ extended: false, limit: "64kb" }), (req, res) => {
+  app.post("/setup", express.urlencoded({ extended: false, limit: "64kb" }), async (req, res) => {
     if (!setupAvailable()) return void res.status(404).type("html").send(failedPage("Setup is already complete."));
     const body = req.body as Record<string, string | undefined>;
-    const error = applySetup(body);
+    const error = await applySetup(body);
     if (error) return void res.status(400).set("Content-Security-Policy", setupCsp).type("html").send(setupPage({ error, values: { app_id: body.app_id, country: body.country }, baseUrl: config.baseUrl }));
     log("setup completed via the setup page");
     if (opts.remote) rememberPasswordFingerprint();
     startWatcherOnce();
-    res.redirect(303, "/");
+    res.redirect(303, "/?welcome");
   });
 
   // Readable from any origin: the Get started page on the website polls it from the visitor's browser

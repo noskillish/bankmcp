@@ -12,11 +12,11 @@ const { applySetup, setupAvailable } = await import("../src/setup.ts");
 const { config, setupProblems } = await import("../src/config.ts");
 const pem = generateKeyPairSync("rsa", { modulusLength: 2048 }).privateKey.export({ type: "pkcs8", format: "pem" }) as string;
 
-test("local mode needs no password and points the redirect at https://localhost", () => {
+test("local mode needs no password and points the redirect at https://localhost", async () => {
   assert.equal(config.localMode, true);
   assert.match(config.baseUrl, /^https:\/\/localhost:\d+$/);
   assert.equal(setupAvailable(), true);
-  assert.equal(applySetup({ app_id: "11111111-2222-3333-4444-555555555555", pem }), null);
+  assert.equal(await applySetup({ app_id: "11111111-2222-3333-4444-555555555555", pem }, null), null);
   assert.deepEqual(setupProblems(), []);
   assert.equal(setupAvailable(), false);
   assert.equal(config.adminPasswordHash, "");

@@ -4,7 +4,7 @@
 import { createPrivateKey } from "node:crypto";
 import { config, looksLikeUuid, saveKeyFile, saveSettings } from "./config.ts";
 import { hashPassword } from "./auth.ts";
-import { resetKeyCache } from "./enablebanking.ts";
+import { checkApplication, EnableBankingError, resetKeyCache, type Application } from "./enablebanking.ts";
 
 export interface SetupInput {
   app_id?: string;
@@ -19,8 +19,13 @@ export function setupAvailable(): boolean {
   return !config.lockedByEnv && !(config.appId && (config.privateKey || config.privateKeyPath) && hasPassword);
 }
 
-/** Returns null on success, otherwise a message for the form. */
-export function applySetup(input: SetupInput): string | null {
+export type Verify = (appId: string, pem: string) => Promise<Application>;
+
+/**
+ * Returns null on success, otherwise a message for the form. Before anything is
+ * stored the id and key are checked against Enable Banking, unless `verify` is null.
+ */
+export async function applySetup(input: SetupInput, verify: Verify | null = checkApplication): Promise<string | null> {
   const appId = (input.app_id ?? "").trim();
   const pem = (input.pem ?? "").trim();
   const password = input.password ?? "";
@@ -38,6 +43,16 @@ export function applySetup(input: SetupInput): string | null {
     if (password !== input.password2) return "The two passwords do not match.";
   }
   if (country && !/^[A-Z]{2}$/.test(country)) return "Country should be a two-letter code such as DK.";
+
+  if (verify) {
+    try {
+      await verify(appId, pem);
+    } catch (err) {
+      if (err instanceof EnableBankingError && (err.status === 401 || err.status === 403)) return "Enable Banking did not accept this application id together with this key. Check that the id is the one shown on the application whose key you chose.";
+      if (err instanceof EnableBankingError) return `Enable Banking answered ${err.status} when asked about the application. Nothing was saved; try again in a moment.`;
+      return `Enable Banking could not be reached (${(err as Error).message}). Nothing was saved; try again in a moment.`;
+    }
+  }
 
   saveKeyFile(pem);
   saveSettings({ app_id: appId, admin_password_hash: config.localMode ? undefined : hashPassword(password), country: country || undefined, setup_completed: new Date().toISOString() });

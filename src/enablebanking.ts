@@ -108,13 +108,17 @@ export function resetKeyCache(): void {
 
 const b64url = (input: Buffer | string) => Buffer.from(input).toString("base64url");
 
+export function signJwt(appId: string, key: KeyObject, now: number): string {
+  const header = b64url(JSON.stringify({ typ: "JWT", alg: "RS256", kid: appId }));
+  const payload = b64url(JSON.stringify({ iss: "enablebanking.com", aud: "api.enablebanking.com", iat: now, exp: now + 3600 }));
+  const signature = createSign("RSA-SHA256").update(`${header}.${payload}`).sign(key).toString("base64url");
+  return `${header}.${payload}.${signature}`;
+}
+
 export function makeJwt(now = Math.floor(Date.now() / 1000)): string {
   if (cachedToken && cachedToken.exp - now > 300) return cachedToken.value;
   keyObject ??= createPrivateKey(readPrivateKey());
-  const header = b64url(JSON.stringify({ typ: "JWT", alg: "RS256", kid: config.appId }));
-  const payload = b64url(JSON.stringify({ iss: "enablebanking.com", aud: "api.enablebanking.com", iat: now, exp: now + 3600 }));
-  const signature = createSign("RSA-SHA256").update(`${header}.${payload}`).sign(keyObject).toString("base64url");
-  cachedToken = { value: `${header}.${payload}.${signature}`, exp: now + 3600 };
+  cachedToken = { value: signJwt(config.appId, keyObject, now), exp: now + 3600 };
   return cachedToken.value;
 }
 
@@ -140,6 +144,15 @@ async function api<T>(method: string, path: string, body?: unknown, query?: Reco
 export interface TransactionPage {
   transactions: Transaction[];
   continuation_key?: string;
+}
+
+/** Asks Enable Banking about an application with a key that is not stored yet (the setup page). */
+export async function checkApplication(appId: string, pem: string): Promise<Application> {
+  const jwt = signJwt(appId, createPrivateKey(pem), Math.floor(Date.now() / 1000));
+  const res = await fetch(new URL("/application", config.apiBase), { headers: { Authorization: `Bearer ${jwt}`, Accept: "application/json" } });
+  const text = await res.text();
+  if (!res.ok) throw new EnableBankingError(res.status, text);
+  return JSON.parse(text) as Application;
 }
 
 export const eb = {

@@ -48,6 +48,18 @@ export function shell(title: string, body: string, opts: { kind?: Kind; pill?: s
   .copyrow{display:flex;gap:8px;align-items:flex-start}.copyrow code{flex:1}
   .copybtn{width:auto;margin:0;padding:6px 10px;font-size:13px;font-weight:600;border-radius:8px;background:transparent;color:var(--ink);border:1px solid var(--line);white-space:nowrap}
   .copybtn:hover{background:var(--bg);opacity:1}
+  h2{font-size:17px;letter-spacing:-.01em;margin:0 0 6px}
+  .stepblock{padding:18px 0 4px;border-top:1px solid var(--line);margin-top:14px}
+  .stepblock:first-of-type{border-top:0;margin-top:4px}
+  .stepno{font-size:12px;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:999px;width:24px;height:24px;display:inline-grid;place-items:center;margin:0 0 8px}
+  .hint{font-size:13px;color:var(--muted);margin:6px 0 0;min-height:1em}.hint.ok{color:var(--ok)}.hint.err{color:var(--err)}.hint.center{text-align:center;margin-top:10px}
+  .small{font-size:13px}.banner{padding:10px 12px;border:1px solid var(--err);border-radius:10px;background:color-mix(in srgb,var(--err) 8%,transparent)}
+  code.inline{padding:1px 6px;display:inline;word-break:normal;white-space:nowrap}
+  .pwrow{display:flex;gap:8px}.pwrow input{flex:1}
+  button.ghost{width:auto;margin:0;padding:0 14px;font-size:13px;font-weight:600;background:transparent;color:var(--ink);border:1px solid var(--line)}
+  button[disabled]{opacity:.45;cursor:default}button[disabled]:hover{opacity:.45}
+  .copybtn.done{color:var(--ok);border-color:var(--ok)}
+  ul.rows.checks{margin-top:8px}.r.ok{color:var(--ok)}.r.err{color:var(--err)}
   footer{margin-top:20px;font-size:12px;color:var(--muted)}
   footer a{color:inherit}
 </style>
@@ -148,40 +160,139 @@ export function setupPage(opts: { error?: string; values?: { app_id?: string; co
   const base = (opts.baseUrl ?? config.baseUrl).replace(/\/+$/, "");
   const row = (label: string, value: string) =>
     `<div class="copy"><p class="muted">${esc(label)}</p><div class="copyrow"><code>${esc(value)}</code><button type="button" class="copybtn" data-copy="${esc(value)}">Copy</button></div></div>`;
+  const password = config.localMode
+    ? ""
+    : `<div class="stepblock">
+       <div class="stepno">3</div>
+       <h2>Choose a password</h2>
+       <p class="muted">Your assistant signs in with it once. It is the only thing between the internet and your accounts, so make it long.</p>
+       <label for="password">Password, 12 characters or more</label>
+       <div class="pwrow"><input id="password" type="password" name="password" required minlength="12" autocomplete="new-password"><button type="button" class="ghost" id="showpw">Show</button></div>
+       <p class="hint" id="pwhint"></p>
+       <label for="password2">Repeat password</label>
+       <input id="password2" type="password" name="password2" required minlength="12" autocomplete="new-password">
+       <p class="hint" id="pw2hint"></p>
+     </div>`;
   return shell(
     `Set up ${config.appName}`,
-    `<p>First register an application at <a href="https://enablebanking.com/cp/applications" target="_blank" rel="noopener">Enable Banking</a>. Its form asks for these values:</p>
-     ${row("Allowed redirect URL", `${base}/callback`)}
-     ${row("Application description", CONSENT_DESCRIPTION)}
-     ${row("Privacy URL", `${base}/privacy`)}
-     ${row("Terms URL", `${base}/terms`)}
-     <p class="muted" style="margin-top:18px">Environment: <b>Production</b> for your real accounts, <b>Sandbox</b> to try with test data. Keep <b>generate private key</b> selected; a <code style="padding:1px 6px">.pem</code> file downloads once when you save. That file and the application id shown after saving go here:</p>
-     ${opts.error ? `<p class="error">${esc(opts.error)}</p>` : ""}
-     <form method="post" action="/setup" id="setup">
+    `<p>Three steps, about ten minutes. Everything you enter stays on this server.</p>
+     ${opts.error ? `<p class="error banner">${esc(opts.error)}</p>` : ""}
+     <form method="post" action="/setup" id="setup" novalidate>
+     <div class="stepblock">
+       <div class="stepno">1</div>
+       <h2>Register at Enable Banking</h2>
+       <p class="muted">Create an application at <a href="https://enablebanking.com/cp/applications" target="_blank" rel="noopener">enablebanking.com</a>. Free for your own accounts. Its form asks for these values:</p>
+       ${row("Allowed redirect URL", `${base}/callback`)}
+       ${row("Application description", CONSENT_DESCRIPTION)}
+       ${row("Privacy URL", `${base}/privacy`)}
+       ${row("Terms URL", `${base}/terms`)}
+       <p class="muted" style="margin-top:14px">Environment: <b>Production</b> for your real accounts, <b>Sandbox</b> to try with test data. Keep <b>generate private key</b> selected. When you save, a <code class="inline">.pem</code> file downloads once and the application id appears.</p>
+     </div>
+     <div class="stepblock">
+       <div class="stepno">2</div>
+       <h2>Enter what Enable Banking gave you</h2>
        <label for="app_id">Application id</label>
        <input id="app_id" name="app_id" required autocomplete="off" spellcheck="false" placeholder="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" value="${esc(v.app_id ?? "")}">
-       <label for="pemfile">Private key file (the .pem that downloaded when you registered)</label>
+       <p class="hint" id="idhint"></p>
+       <label for="pemfile">Private key file</label>
        <input id="pemfile" type="file" accept=".pem,.key,.txt,application/x-pem-file">
-       <textarea id="pem" name="pem" rows="3" placeholder="…or paste the contents of the .pem file here" spellcheck="false"></textarea>
+       <p class="hint" id="pemhint">The <code class="inline">.pem</code> file that downloaded when you saved the application. It is read here in your browser and stored on this server only.</p>
+       <p class="muted small"><a href="#" id="pastelink">Paste the key instead</a></p>
+       <textarea id="pem" name="pem" rows="4" placeholder="-----BEGIN PRIVATE KEY-----" spellcheck="false" hidden></textarea>
        <label for="country">Country of your banks</label>
        <input id="country" name="country" maxlength="2" placeholder="DK" value="${esc(v.country ?? "")}" style="width:6em;text-transform:uppercase">
-       ${config.localMode ? "" : `<label for="password">Password (12+ characters, used when connecting your assistant)</label>
-       <input id="password" type="password" name="password" required minlength="12" autocomplete="new-password">
-       <label for="password2">Repeat password</label>
-       <input id="password2" type="password" name="password2" required minlength="12" autocomplete="new-password">`}
-       <button type="submit">Finish setup</button>
+       <p class="hint">Two letters. Used as the default when you ask for a bank.</p>
+     </div>
+     ${password}
+     <button type="submit" id="submit">Check with Enable Banking and finish</button>
+     <p class="hint center" id="submithint">The id and key are checked against Enable Banking before anything is saved.</p>
      </form>
      <script>
+       const $ = (id) => document.getElementById(id);
+       const hint = (el, text, state) => { el.textContent = text; el.className = "hint" + (state ? " " + state : ""); };
        for (const b of document.querySelectorAll(".copybtn")) b.addEventListener("click", async () => {
-         try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copied"; setTimeout(() => (b.textContent = "Copy"), 1500); }
+         try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copied ✓"; b.classList.add("done"); setTimeout(() => { b.textContent = "Copy"; b.classList.remove("done"); }, 1600); }
          catch { b.textContent = "Select and copy"; }
        });
-       document.getElementById("pemfile").addEventListener("change", (e) => {
-         const f = e.target.files[0]; if (!f) return;
-         const r = new FileReader(); r.onload = () => { document.getElementById("pem").value = r.result; }; r.readAsText(f);
+       const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+       const state = { id: false, pem: false, pw: ${config.localMode ? "true" : "false"} };
+       const update = () => { $("submit").disabled = !(state.id && state.pem && state.pw); };
+       $("app_id").addEventListener("input", (e) => {
+         const val = e.target.value.trim(); state.id = uuid.test(val);
+         hint($("idhint"), !val ? "" : state.id ? "Looks like an application id ✓" : "An application id is a UUID: 8-4-4-4-12 characters, shown on the application after you save it.", !val ? "" : state.id ? "ok" : "err");
+         update();
        });
+       const checkPem = (text, source) => {
+         state.pem = /PRIVATE KEY/.test(text);
+         hint($("pemhint"), state.pem ? source + " read: a private key ✓" : source + " does not contain a private key. Choose the .pem that downloaded from Enable Banking.", state.pem ? "ok" : "err");
+         update();
+       };
+       $("pemfile").addEventListener("change", (e) => {
+         const f = e.target.files[0]; if (!f) return;
+         const r = new FileReader(); r.onload = () => { $("pem").value = r.result; checkPem(String(r.result), f.name); }; r.readAsText(f);
+       });
+       $("pastelink").addEventListener("click", (e) => { e.preventDefault(); $("pem").hidden = false; $("pem").focus(); e.target.parentElement.hidden = true; });
+       $("pem").addEventListener("input", (e) => checkPem(e.target.value, "Pasted key"));
+       if (!${config.localMode}) {
+         const pw = $("password"), pw2 = $("password2");
+         const checkPw = () => {
+           const n = pw.value.length;
+           hint($("pwhint"), n === 0 ? "" : n < 12 ? (12 - n) + " more character" + (12 - n === 1 ? "" : "s") : n < 16 ? "Long enough ✓" : "Good ✓", n === 0 ? "" : n < 12 ? "err" : "ok");
+           const same = pw2.value.length > 0 && pw.value === pw2.value;
+           hint($("pw2hint"), pw2.value.length === 0 ? "" : same ? "Matches ✓" : "Does not match yet", pw2.value.length === 0 ? "" : same ? "ok" : "err");
+           state.pw = n >= 12 && same; update();
+         };
+         pw.addEventListener("input", checkPw); pw2.addEventListener("input", checkPw);
+         $("showpw").addEventListener("click", () => { const t = pw.type === "password" ? "text" : "password"; pw.type = t; pw2.type = t; $("showpw").textContent = t === "text" ? "Hide" : "Show"; });
+       }
+       $("setup").addEventListener("submit", () => {
+         $("submit").disabled = true; $("submit").textContent = "Checking with Enable Banking…";
+         hint($("submithint"), "Signing a request with your key and asking Enable Banking about the application. A few seconds.", "");
+       });
+       if ($("app_id").value) $("app_id").dispatchEvent(new Event("input"));
+       update();
      </script>`,
     { kind: "neutral", pill: "First run" },
+  );
+}
+
+export function welcomePage(input: { application?: { name: string; environment: string; active: boolean; redirect_urls: string[] }; mcpUrl: string; callbackUrl: string }): string {
+  const a = input.application;
+  const row = (label: string, value: string) =>
+    `<div class="copy"><p class="muted">${esc(label)}</p><div class="copyrow"><code>${esc(value)}</code><button type="button" class="copybtn" data-copy="${esc(value)}">Copy</button></div></div>`;
+  const registered = a ? a.redirect_urls.includes(input.callbackUrl) : undefined;
+  const checks = a
+    ? `<ul class="rows checks">
+         <li><span>Application</span><span class="r">${esc(a.name)} · ${a.environment === "SANDBOX" ? "sandbox" : "production"}</span></li>
+         <li><span>Key and id</span><span class="r ok">accepted ✓</span></li>
+         <li><span>Redirect URL registered</span><span class="r ${registered ? "ok" : "err"}">${registered ? "yes ✓" : "not yet"}</span></li>
+         <li><span>Application status</span><span class="r ${a.active ? "ok" : "err"}">${a.active ? "active ✓" : "inactive"}</span></li>
+       </ul>
+       ${registered ? "" : `<p class="error small">Add this redirect URL to the application in the Control Panel, or bank logins will fail:</p>${row("Allowed redirect URL", input.callbackUrl)}`}
+       ${a.active ? "" : `<p class="muted small" style="margin-top:12px">${a.environment === "SANDBOX" ? "Sandbox applications activate on their own." : "A production application for your own accounts is activated with <b>Activate by linking accounts</b> on the application page in the Control Panel. Do that before connecting a bank."}</p>`}`
+    : `<p class="muted">Saved. Enable Banking could not be asked about the application right now; the status page will tell you if something is off.</p>`;
+  return shell(
+    "Ready",
+    `<p>Your key, application id and password are stored on this server.</p>
+     ${checks}
+     <h2 style="margin-top:22px">Next</h2>
+     <div class="stepblock">
+       <div class="stepno">1</div>
+       <p><b>Add the connector to your assistant.</b> In claude.ai: Settings → Connectors → Add custom connector, paste this address, keep the detected options, then Connect and sign in with your password. Other MCP clients take the same address as a remote server.</p>
+       ${row("Connector address", input.mcpUrl)}
+     </div>
+     <div class="stepblock">
+       <div class="stepno">2</div>
+       <p><b>Connect your bank.</b> In a chat, say <code class="inline">connect my bank</code>. You get a link, log in at your bank, and the accounts appear.</p>
+     </div>
+     <p class="muted small" style="margin-top:18px">This page is at <a href="/">${esc(input.mcpUrl.replace(/\/mcp$/, "/"))}</a> whenever you need the addresses again.</p>
+     <script>
+       for (const b of document.querySelectorAll(".copybtn")) b.addEventListener("click", async () => {
+         try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copied ✓"; b.classList.add("done"); setTimeout(() => { b.textContent = "Copy"; b.classList.remove("done"); }, 1600); }
+         catch { b.textContent = "Select and copy"; }
+       });
+     </script>`,
+    { kind: "ok", pill: "Set up" },
   );
 }
 
