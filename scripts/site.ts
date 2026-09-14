@@ -44,7 +44,8 @@ const PAGE_CSS = `<style>
   .addr input { flex: 1; min-width: 0; font: inherit; font-size: 0.85rem; padding: 0.55rem 0.8rem; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--bg-card); color: var(--ink); }
   .addr input:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
   .addr button { font: inherit; font-size: 0.85rem; font-weight: 500; padding: 0.55rem 1rem; border: 1px solid var(--ink); border-radius: 8px; background: var(--ink); color: #f5f5f3; cursor: pointer; }
-  .status { font-size: 0.82rem; color: var(--dim); }
+  .status { font-size: 0.82rem; color: var(--dim); margin-top: 0.35rem; }
+  .go { margin-top: 0.9rem; } .go .btn { font-size: 0.82rem; padding: 0.6rem 1.2rem; }
   .step .railway img { display: block; margin: 0.25rem 0 0.75rem; }
   .step .more { margin-top: 0.75rem; }
   .countries { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 2rem; margin-top: 2.5rem; max-width: 680px; }

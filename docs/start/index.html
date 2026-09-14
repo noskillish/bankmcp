@@ -181,7 +181,8 @@
   .addr input { flex: 1; min-width: 0; font: inherit; font-size: 0.85rem; padding: 0.55rem 0.8rem; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--bg-card); color: var(--ink); }
   .addr input:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
   .addr button { font: inherit; font-size: 0.85rem; font-weight: 500; padding: 0.55rem 1rem; border: 1px solid var(--ink); border-radius: 8px; background: var(--ink); color: #f5f5f3; cursor: pointer; }
-  .status { font-size: 0.82rem; color: var(--dim); }
+  .status { font-size: 0.82rem; color: var(--dim); margin-top: 0.35rem; }
+  .go { margin-top: 0.9rem; } .go .btn { font-size: 0.82rem; padding: 0.6rem 1.2rem; }
   .step .railway img { display: block; margin: 0.25rem 0 0.75rem; }
   .step .more { margin-top: 0.75rem; }
   .countries { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 2rem; margin-top: 2.5rem; max-width: 680px; }
@@ -260,13 +261,13 @@
     <div class="eyebrow">On a server · about ten minutes</div>
     <h2>Deploy, then set up in the browser.</h2>
     <div class="steps">
-      <div class="step"><div class="n">01</div><h3>Deploy</h3><p><a class="railway" href="https://railway.com/new/template/bankmcp?utm_medium=integration&amp;utm_source=button&amp;utm_campaign=bankmcp" target="_blank" rel="noopener"><img src="https://railway.com/button.svg" alt="Deploy on Railway" height="32"></a></p><p>One click creates the server, its storage and its address in your own Railway account. Railway charges for the server; there is nothing to pay us.</p></div>
-      <div class="step"><div class="n">02</div><h3>Paste the address</h3><p>When the card in Railway turns green it shows an address ending in <code>.up.railway.app</code>. Paste it here and this page waits for your server.</p>
+      <div class="step"><div class="n">01</div><h3>Deploy</h3><p><a class="railway" href="https://railway.com/new/template/bankmcp?utm_medium=integration&amp;utm_source=button&amp;utm_campaign=bankmcp" target="_blank" rel="noopener"><img src="https://railway.com/button.svg" alt="Deploy on Railway" height="32"></a></p><p>One click in your own Railway account creates the server, its storage and its address. Railway bills the server; nothing is paid to us.</p></div>
+      <div class="step"><div class="n">02</div><h3>Paste the address</h3><p>When the card in Railway turns green it shows an address ending in <code>.up.railway.app</code>. Paste it here. This page waits for the server and opens its setup page.</p>
         <form class="addr" id="addr"><input id="host" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="bankmcp-production-xxxx.up.railway.app"><button type="submit">Check</button></form>
         <p class="status" id="status" hidden></p>
-        <p class="more" id="open" hidden><a class="btn btn-primary" id="openlink" href="#">Open setup →</a></p>
+        <p class="go" id="open" hidden><a class="btn btn-primary" id="openlink" href="#">Open setup →</a></p>
       </div>
-      <div class="step"><div class="n">03</div><h3>Finish setup</h3><p>The setup page asks for an Enable Banking application, free for your own accounts, and a password. It shows the values Enable Banking's form needs, with Copy buttons. Then add the address it gives you as a connector in your assistant and say <code>connect my bank</code>.</p></div>
+      <div class="step"><div class="n">03</div><h3>Finish setup</h3><p>The setup page asks for an Enable Banking application, free for your own accounts, and a password, and shows the values their form needs with Copy buttons. Then add the connector address to your assistant and say <code>connect my bank</code>.</p></div>
     </div>
     <p class="more">Other hosts: <a href="/setup/">Fly, Render and Docker</a>.</p>
   </div>
@@ -304,15 +305,15 @@
         const h = await r.json();
         clearInterval(timer); timer = null;
         link.href = `https://${host}/`;
-        if (h.configured) { link.textContent = "Open your server →"; show("Your server is running and already set up.", true); }
-        else { link.textContent = "Open setup →"; show("Your server is running.", true); }
+        if (h.configured) { link.textContent = "Open your server →"; show("Your server is up and already set up.", true); }
+        else { link.textContent = "Open setup →"; show("Your server is up. Opening its setup page.", true); setTimeout(() => { location.href = link.href; }, 1200); }
       } catch {
         // Older servers do not allow cross-origin reads of the health check; a plain probe still tells us it answers.
         try {
           await fetch(`https://${host}/healthz`, { mode: "no-cors", cache: "no-store" });
           clearInterval(timer); timer = null;
           link.href = `https://${host}/`; link.textContent = "Open your server →";
-          show("Your server is answering.", true);
+          show("Your server is up.", true);
         } catch {
           show("Waiting for your server to answer. This can take a minute after Deploy.", false);
         }
