@@ -18,6 +18,7 @@ export interface Settings {
   country?: string;
   setup_completed?: string;
   registered_email?: string;
+  registered_visible?: boolean;
 }
 
 const settingsPath = join(dataDir, "settings.json");
@@ -75,6 +76,9 @@ export const config = {
   appName: env.APP_NAME ?? "BankMCP™",
   get registeredEmail(): string | undefined {
     return settings.registered_email;
+  },
+  get registeredVisible(): boolean | undefined {
+    return settings.registered_visible;
   },
   get adminPasswordHash(): string {
     return env.ADMIN_PASSWORD_HASH ?? settings.admin_password_hash ?? "";

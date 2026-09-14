@@ -92,7 +92,7 @@ export function createApp(opts: AppOptions) {
     if ("welcome" in req.query && !problems.length) {
       // Right after setup: what was checked, and the two things to do next.
       const application = await eb.getApplication().catch(() => undefined);
-      return void res.set("Content-Security-Policy", setupCsp).type("html").send(welcomePage({ application, mcpUrl: mcpUrl.href, callbackUrl }));
+      return void res.set("Content-Security-Policy", setupCsp).type("html").send(welcomePage({ application, mcpUrl: mcpUrl.href, callbackUrl, listedInControlPanel: config.registeredVisible }));
     }
     res.set("Content-Security-Policy", setupCsp).type("html").send(statusPage({ problems, mcpUrl: mcpUrl.href, callbackUrl }));
   });
@@ -114,7 +114,7 @@ export function createApp(opts: AppOptions) {
       if (input.link && email) return void res.status(400).set("Content-Security-Policy", setupCsp).type("html").send(checkEmailPage(email, { error: result.error, paste: true }));
       return void res.status(400).set("Content-Security-Policy", setupCsp).type("html").send(setupPage({ error: result.error, baseUrl: config.baseUrl }));
     }
-    log(`registration: application ${result.appId} created (${result.environment})`);
+    log(`registration: application ${result.appId} created (${result.environment}; listed in the Control Panel: ${result.visible ?? "unknown"})`);
     if (config.localMode) {
       startWatcherOnce();
       return void res.redirect(303, "/?welcome");

@@ -23,6 +23,25 @@ export interface SignIn {
   refreshToken?: string;
   localId?: string;
   email?: string;
+  isNewUser?: boolean;
+}
+
+// The Control Panel lists applications from a per-user profile document, created a moment
+// after a brand-new account first signs in. The Control Panel web app reads it the same way.
+const PROFILES = process.env.EB_PROFILE_BASE ?? "https://firestore.googleapis.com/v1/projects/enablebanking/databases/(default)/documents/users";
+
+interface ProfileDoc {
+  fields?: { applications?: { arrayValue?: { values?: { stringValue?: string; mapValue?: { fields?: { kid?: { stringValue?: string } } } }[] } } };
+}
+
+/** Application ids the Control Panel lists for this user, or null while the profile does not exist yet. */
+export async function profileApplications(idToken: string, uid: string, doFetch: Fetch = fetch): Promise<string[] | null> {
+  const res = await doFetch(`${PROFILES}/${encodeURIComponent(uid)}`, { headers: { authorization: `Bearer ${idToken}`, accept: "application/json" } });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new ControlPanelError(res.status, await res.text());
+  const doc = (await res.json()) as ProfileDoc;
+  const values = doc.fields?.applications?.arrayValue?.values ?? [];
+  return values.map((v) => v.stringValue ?? v.mapValue?.fields?.kid?.stringValue ?? "").filter(Boolean);
 }
 
 export interface Registration {

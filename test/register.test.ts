@@ -58,6 +58,27 @@ test("registration sends the link with a state, then creates the application and
   assert.equal(registeredButUnfinished(), null);
 });
 
+test("registration waits for a brand-new account's Control Panel profile and reports whether the application is listed", async () => {
+  _resetPending();
+  let reads = 0;
+  const listed: string[] = [];
+  const d = {
+    ...deps,
+    completeSignIn: async () => ({ idToken: "t", localId: "uid-1", isNewUser: true }),
+    registerApplication: async () => { listed.push("33333333-3333-4444-5555-666666666666"); return { app_id: "33333333-3333-4444-5555-666666666666" }; },
+    // the profile does not exist for the first two reads, then it lists whatever was registered
+    profileApplications: async () => { reads += 1; return reads <= 2 ? null : [...listed]; },
+    sleep: async () => {},
+  };
+  await startRegistration({ email: "new@example.com" }, "https://h.example", d);
+  const state = new URL((calls.link!.at(-1) as [string, string])[1]).searchParams.get("state")!;
+  const done = await finishRegistration({ state, oobCode: "good" }, "https://h.example", d);
+  assert.ok(!("error" in done));
+  assert.equal(reads >= 3, true, "waited for the profile before registering");
+  assert.equal(listed.length, 1, "registered once the profile existed");
+  assert.equal((done as { visible?: boolean }).visible, true);
+});
+
 test("a pasted email link yields the sign-in code however it is wrapped", () => {
   assert.equal(parseSignInLink("https://enablebanking.com/cp/auth?mode=signIn&oobCode=AbC-123_x&continueUrl=http%3A%2F%2Flocalhost%3A8080%2Fsetup%2Fcomplete%3Fstate%3Ds1").oobCode, "AbC-123_x");
   assert.equal(parseSignInLink("https://enablebanking.com/cp/auth?mode=signIn&oobCode=AbC-123_x&continueUrl=http%3A%2F%2Flocalhost%3A8080%2Fsetup%2Fcomplete%3Fstate%3Ds1").state, "s1");

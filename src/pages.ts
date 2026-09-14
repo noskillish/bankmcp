@@ -364,7 +364,7 @@ export function checkEmailPage(email: string, opts: { error?: string; paste?: bo
   return shell("Check your email", body, { kind: "neutral", pill: "Waiting for the link" });
 }
 
-export function welcomePage(input: { application?: { name: string; environment: string; active: boolean; redirect_urls: string[] }; mcpUrl: string; callbackUrl: string }): string {
+export function welcomePage(input: { application?: { name: string; environment: string; active: boolean; redirect_urls: string[] }; mcpUrl: string; callbackUrl: string; listedInControlPanel?: boolean }): string {
   const a = input.application;
   const row = (label: string, value: string) =>
     `<div class="copy"><p class="muted">${esc(label)}</p><div class="copyrow"><code>${esc(value)}</code><button type="button" class="copybtn" data-copy="${esc(value)}">Copy</button></div></div>`;
@@ -377,7 +377,8 @@ export function welcomePage(input: { application?: { name: string; environment: 
          <li><span>Application status</span><span class="r ${a.active ? "ok" : "err"}">${a.active ? "active ✓" : "inactive"}</span></li>
        </ul>
        ${registered ? "" : `<p class="error small">Add this redirect URL to the application in the Control Panel, or bank logins will fail:</p>${row("Allowed redirect URL", input.callbackUrl)}`}
-       ${a.active ? "" : `<p class="muted small" style="margin-top:12px">${a.environment === "SANDBOX" ? "Sandbox applications activate on their own." : "A production application for your own accounts is activated with <b>Activate by linking accounts</b> on the application page in the Control Panel. Do that before connecting a bank."}</p>`}`
+       ${a.active ? "" : `<p class="muted small" style="margin-top:12px">${a.environment === "SANDBOX" ? "Sandbox applications activate on their own." : "A production application for your own accounts is activated with <b>Activate by linking accounts</b> on the application page in the Control Panel. Do that before connecting a bank."}</p>`}
+       ${input.listedInControlPanel === false ? `<p class="error small" style="margin-top:12px">The application was created, but Enable Banking's Control Panel does not list it under your account yet. If it is still missing after a few minutes, write to Enable Banking support with the application id above; they can attach it.</p>` : ""}`
     : `<p class="muted">Saved. Enable Banking could not be asked about the application right now; the status page will tell you if something is off.</p>`;
   return shell(
     "Ready",
