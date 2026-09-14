@@ -82,7 +82,8 @@ export function loginPage(opts: { requestId: string; clientName?: string; return
        <label for="pw">Password</label>
        <input id="pw" type="password" name="password" autofocus autocomplete="current-password" required>
        <button type="submit">Allow access</button>
-     </form>`,
+     </form>
+     <p class="muted small" style="margin-top:14px">Forgot the password? Set <code class="inline">ADMIN_PASSWORD</code> on your host and restart the server; <a href="https://bankmcp.dk/questions/#password" target="_blank" rel="noopener">how</a>.</p>`,
     { kind: "neutral", pill: "Sign-in request" },
   );
 }

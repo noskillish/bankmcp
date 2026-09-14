@@ -290,6 +290,8 @@ bank either way; that part is regulated and unavoidable.
 - Anyone with the admin password can read your accounts. Use a long one.
   Every successful sign-in is logged and, if `NOTIFY_WEBHOOK_URL` is set,
   sent to you as a message. A sign-in you did not make is your alarm.
+- Forgot the password? Set `ADMIN_PASSWORD` (or `ADMIN_PASSWORD_HASH`) on the
+  host and restart; the environment wins over the value stored at setup.
 - Changing `ADMIN_PASSWORD_HASH` (or `ADMIN_PASSWORD`) and restarting logs
   every client out. That is the kill switch. Revoking the consents at your
   bank, or deleting the state file, is the step beyond it.

@@ -284,6 +284,14 @@
     },
     {
      "@type": "Question",
+     "name": "I forgot my password. What now?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Set a new one on the host and restart: on Railway, Variables → add ADMIN_PASSWORD with the new password, which redeploys the server. Environment variables win over the stored one, and every assistant connection is signed out so you connect again with the new password. Nothing else is lost; bank consents stay."
+     }
+    },
+    {
+     "@type": "Question",
      "name": "How do I run it?",
      "acceptedAnswer": {
       "@type": "Answer",
@@ -404,6 +412,7 @@
       <div class="q"><h3>What does it cost?</h3><p>The software is free under the MIT licence. Registering at Enable Banking is free for your own accounts. You pay for whatever you run it on, and on your own machine that is nothing.</p></div>
       <div class="q"><h3>Where does my data go?</h3><p>From your bank to Enable Banking to your server to your assistant. Your server fetches balances and transactions when asked and does not save them. Nothing goes to the makers of BankMCP™. Your assistant keeps the conversation, as any chat does.</p></div>
       <div class="q"><h3>Can it make payments?</h3><p>No. It uses account information access only, which is read-only, and it has no payment tools.</p></div>
+      <div class="q" id="password"><h3>I forgot my password. What now?</h3><p>Set a new one on the host and restart: on Railway, Variables → add ADMIN_PASSWORD with the new password, which redeploys the server. Environment variables win over the stored one, and every assistant connection is signed out so you connect again with the new password. Nothing else is lost; bank consents stay.</p></div>
       <div class="q"><h3>How do I run it?</h3><p>On your machine with <code>npx bankmcp</code>, in Claude Desktop with the bundle from the GitHub releases, or as one container on Railway or Fly. A new server shows a setup page in the browser. There is no hosted version; you deploy your own copy and you are its only user.</p></div>
     </div>
   </div>

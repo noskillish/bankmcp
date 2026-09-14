@@ -177,13 +177,29 @@
   main section:first-of-type { border-top: 0; padding-top: 2rem; }
   .more { margin-top: 2rem; font-size: 0.85rem; color: var(--dim); } .more a { color: var(--ink); }
   nav a[aria-current] { color: var(--ink); }
+  .steps.start { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+  @media (max-width: 767px) { .steps.start { grid-template-columns: 1fr; } }
+  .steps.start .step { display: flex; flex-direction: column; transition: border-color .3s; }
+  .steps.start .step.active { border-color: var(--border-strong); }
+  .steps.start .step.done .n::after { content: " ✓"; color: var(--ok); }
+  .steps.start .step p:last-child { margin-bottom: 0; }
   .addr { display: flex; gap: 0.5rem; margin: 0.9rem 0 0.5rem; }
   .addr input { flex: 1; min-width: 0; font: inherit; font-size: 0.85rem; padding: 0.55rem 0.8rem; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--bg-card); color: var(--ink); }
   .addr input:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
   .addr button { font: inherit; font-size: 0.85rem; font-weight: 500; padding: 0.55rem 1rem; border: 1px solid var(--ink); border-radius: 8px; background: var(--ink); color: #f5f5f3; cursor: pointer; }
-  .status { font-size: 0.82rem; color: var(--dim); margin-top: 0.35rem; }
+  .status { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.82rem; color: var(--dim); margin-top: 0.35rem; }
+  .status .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-top: 0.4rem; }
+  .status.wait .dot { background: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
+  .status.ok { color: var(--ok); } .status.ok .dot { background: var(--ok); }
+  .status.err { color: var(--accent); } .status.err .dot { background: var(--accent); }
+  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.7); } }
+  .hint { font-size: 0.78rem; color: var(--muted); margin-top: 0.5rem; }
   .go { margin-top: 0.9rem; } .go .btn { font-size: 0.82rem; padding: 0.6rem 1.2rem; }
-  .step .railway img { display: block; margin: 0.25rem 0 0.75rem; }
+  .step .go { margin-top: 0.9rem; }
+  .copyrow { display: flex; gap: 0.5rem; align-items: flex-start; margin-top: 0.6rem; }
+  .copyrow code { flex: 1; font-size: 0.75rem; padding: 0.5rem 0.7rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); word-break: break-all; }
+  .copybtn { font: inherit; font-size: 0.78rem; font-weight: 500; padding: 0.45rem 0.8rem; border: 1px solid var(--border-strong); border-radius: 8px; background: transparent; color: var(--ink); cursor: pointer; white-space: nowrap; }
+  .copybtn.done { color: var(--ok); border-color: var(--ok); }
   .step .more { margin-top: 0.75rem; }
   .countries { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 2rem; margin-top: 2.5rem; max-width: 680px; }
   @media (min-width: 640px) { .countries { grid-template-columns: 1fr 1fr 1fr; } }
@@ -260,14 +276,14 @@
   <div class="container">
     <div class="eyebrow">On a server · about ten minutes</div>
     <h2>Deploy, then set up in the browser.</h2>
-    <div class="steps">
-      <div class="step"><div class="n">01</div><h3>Deploy</h3><p><a class="railway" href="https://railway.com/new/template/bankmcp?utm_medium=integration&amp;utm_source=button&amp;utm_campaign=bankmcp" target="_blank" rel="noopener"><img src="https://railway.com/button.svg" alt="Deploy on Railway" height="32"></a></p><p>One click in your own Railway account creates the server, its storage and its address. Railway bills the server; nothing is paid to us.</p></div>
-      <div class="step"><div class="n">02</div><h3>Paste the address</h3><p>When the card in Railway turns green it shows an address ending in <code>.up.railway.app</code>. Paste it here. This page waits for the server and opens its setup page.</p>
-        <form class="addr" id="addr"><input id="host" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="bankmcp-production-xxxx.up.railway.app"><button type="submit">Check</button></form>
-        <p class="status" id="status" hidden></p>
+    <div class="steps start">
+      <div class="step" id="s1"><div class="n">01</div><h3>Deploy</h3><p>One click in your own Railway account creates the server, its storage and its address. Railway bills the server; nothing is paid to us.</p><p class="go"><a class="btn btn-primary" id="deploy" href="https://railway.com/new/template/bankmcp?utm_medium=integration&amp;utm_source=button&amp;utm_campaign=bankmcp" target="_blank" rel="noopener">Deploy on Railway →</a></p><p class="hint">Opens Railway in a new tab. Come back here when the card turns green.</p></div>
+      <div class="step" id="s2"><div class="n">02</div><h3>Paste the address</h3><p>Railway shows the address on the service card, ending in <code>.up.railway.app</code>. Paste it here. This page waits for the server and opens its setup page in a new tab.</p>
+        <form class="addr" id="addr"><input id="host" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="bankmcp-production-xxxx.up.railway.app" aria-label="Server address"><button type="submit" id="check">Check</button></form>
+        <p class="status" id="status" hidden><span class="dot"></span><span id="statustext"></span></p>
         <p class="go" id="open" hidden><a class="btn btn-primary" id="openlink" href="#" target="_blank" rel="noopener">Open setup →</a></p>
       </div>
-      <div class="step"><div class="n">03</div><h3>Finish setup</h3><p>The setup page asks for an Enable Banking application, free for your own accounts, and a password, and shows the values their form needs with Copy buttons. Then add the connector address to your assistant and say <code>connect my bank</code>.</p></div>
+      <div class="step" id="s3"><div class="n">03</div><h3>Finish setup</h3><div id="s3default"><p>The setup page asks for an Enable Banking application, free for your own accounts, and a password. It checks them with Enable Banking before saving and then shows the connector address for your assistant.</p></div><div id="s3done" hidden><p>Your server is set up. Add this address to your assistant as a custom connector and sign in with your password. Then say <code>connect my bank</code>.</p><div class="copyrow"><code id="mcpaddr"></code><button type="button" class="copybtn" id="copymcp">Copy</button></div></div></div>
     </div>
     <p class="more">Other hosts: <a href="/setup/">Fly, Render and Docker</a>.</p>
   </div>
@@ -293,40 +309,63 @@
 </main>
 <script>
   (() => {
-    const form = document.getElementById("addr"), input = document.getElementById("host");
-    const status = document.getElementById("status"), open = document.getElementById("open"), link = document.getElementById("openlink");
-    let timer = null, host = "";
-    const show = (text, ready) => { status.hidden = false; status.textContent = text; open.hidden = !ready; };
+    const $ = (id) => document.getElementById(id);
+    const form = $("addr"), input = $("host"), status = $("status"), text = $("statustext"), open = $("open"), link = $("openlink");
+    const s2 = $("s2"), s3 = $("s3");
+    let timer = null, debounce = null, host = "", opened = false;
+    const show = (msg, state) => { status.hidden = false; status.className = "status" + (state ? " " + state : ""); text.textContent = msg; open.hidden = state !== "ok"; };
     const clean = (v) => v.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase();
+    const remember = (h) => { try { localStorage.setItem("bankmcp-host", h); } catch {} };
+    const ready = (configured) => {
+      clearInterval(timer); timer = null;
+      s2.classList.add("done");
+      link.href = `https://${host}/`;
+      if (configured) {
+        link.textContent = "Open your server →";
+        show("Your server is up and set up.", "ok");
+        $("mcpaddr").textContent = `https://${host}/mcp`;
+        $("s3default").hidden = true; $("s3done").hidden = false; s3.classList.add("done", "active");
+      } else {
+        link.textContent = "Open setup →";
+        s3.classList.add("active");
+        if (!opened) { opened = true; const w = window.open(link.href, "_blank", "noopener"); show(w ? "Your server is up. Its setup page opened in a new tab; this page keeps checking and updates when you are done." : "Your server is up. Open its setup page in a new tab.", "ok"); }
+        else show("Your server is up. Finish the setup page in the other tab; this page updates when you are done.", "ok");
+        // keep watching so step 3 turns green when setup completes
+        timer = setInterval(poll, 5000);
+      }
+    };
     async function poll() {
       try {
         const r = await fetch(`https://${host}/healthz`, { cache: "no-store" });
         if (!r.ok) throw new Error(String(r.status));
         const h = await r.json();
-        clearInterval(timer); timer = null;
-        link.href = `https://${host}/`;
-        if (h.configured) { link.textContent = "Open your server →"; show("Your server is up and already set up.", true); }
-        else { link.textContent = "Open setup →"; show("Your server is up.", true); const w = window.open(link.href, "_blank", "noopener"); show(w ? "Your server is up. Its setup page opened in a new tab; this page stays for the next steps." : "Your server is up. Open its setup page in a new tab.", true); }
+        ready(Boolean(h.configured));
       } catch {
-        // Older servers do not allow cross-origin reads of the health check; a plain probe still tells us it answers.
         try {
           await fetch(`https://${host}/healthz`, { mode: "no-cors", cache: "no-store" });
-          clearInterval(timer); timer = null;
+          clearInterval(timer); timer = null; s2.classList.add("done");
           link.href = `https://${host}/`; link.textContent = "Open your server →";
-          show("Your server is up.", true);
+          show("Your server is up.", "ok");
         } catch {
-          show("Waiting for your server to answer. This can take a minute after Deploy.", false);
+          show("Waiting for your server to answer. This can take a minute after Deploy.", "wait");
         }
       }
     }
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
+    const start = () => {
       host = clean(input.value);
-      if (!host || !host.includes(".")) return show("Paste the address Railway shows on the service card.", false);
-      input.value = host;
+      if (!host || !host.includes(".")) return show("Paste the address Railway shows on the service card.", "err");
+      input.value = host; remember(host);
       if (timer) clearInterval(timer);
       poll(); timer = setInterval(poll, 4000);
+    };
+    form.addEventListener("submit", (e) => { e.preventDefault(); start(); });
+    input.addEventListener("input", () => { clearTimeout(debounce); if (clean(input.value).endsWith(".up.railway.app")) debounce = setTimeout(start, 500); });
+    $("copymcp").addEventListener("click", async () => {
+      const b = $("copymcp");
+      try { await navigator.clipboard.writeText($("mcpaddr").textContent); b.textContent = "Copied ✓"; b.classList.add("done"); setTimeout(() => { b.textContent = "Copy"; b.classList.remove("done"); }, 1600); }
+      catch { b.textContent = "Select and copy"; }
     });
+    try { const saved = localStorage.getItem("bankmcp-host"); if (saved) { input.value = saved; start(); } } catch {}
   })();
 </script>
 <footer>
