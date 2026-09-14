@@ -104,7 +104,7 @@ export function createApp(opts: AppOptions) {
     const result = await startRegistration(body, config.baseUrl);
     if ("error" in result) return void res.status(400).set("Content-Security-Policy", setupCsp).type("html").send(setupPage({ error: result.error, values: { email: body.email, country: body.country }, baseUrl: config.baseUrl }));
     log(`registration: sign-in link requested for ${result.email.replace(/^(.).*(@.*)$/, "$1…$2")}`);
-    res.type("html").send(checkEmailPage(result.email));
+    res.set("Content-Security-Policy", setupCsp).type("html").send(checkEmailPage(result.email));
   });
 
   const complete = async (input: { state?: string; oobCode?: string; link?: string }, res: express.Response) => {

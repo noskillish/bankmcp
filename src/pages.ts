@@ -345,7 +345,7 @@ export function checkEmailPage(email: string, opts: { error?: string; paste?: bo
          <label for="link">The sign-in link from the email</label>
          <textarea id="link" name="link" rows="4" placeholder="https://enablebanking.com/…oobCode=…" spellcheck="false" autofocus></textarea>
          <p class="hint" id="linkhint"></p>
-         <button type="submit" id="submit" disabled>Create the application</button>
+         <button type="submit" id="submit">Create the application</button>
          <p class="hint center">This server signs in with the link once, creates the application and the key, and forgets the sign-in.</p>
        </form>
        <p class="muted small" style="margin-top:14px">Nothing has been stored yet. The link works once and for a limited time; if no email arrives, check the spam folder, then <a href="/">start again</a>.</p>
@@ -355,7 +355,6 @@ export function checkEmailPage(email: string, opts: { error?: string; paste?: bo
            const ok = /oobCode=/.test(decodeURIComponent(t.value));
            h.textContent = t.value.trim() ? (ok ? "Sign-in code found ✓" : "No sign-in code in this yet. Copy the whole link.") : "";
            h.className = "hint " + (t.value.trim() ? (ok ? "ok" : "err") : "");
-           b.disabled = !ok;
          });
          f.addEventListener("submit", () => { b.disabled = true; b.textContent = "Signing in and creating the application…"; });
        </script>`
