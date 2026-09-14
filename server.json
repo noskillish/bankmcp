@@ -8,13 +8,13 @@
     "url": "https://github.com/noskillish/bankmcp",
     "source": "github"
   },
-  "version": "0.1.6",
+  "version": "0.1.7",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "bankmcp",
-      "version": "0.1.6",
+      "version": "0.1.7",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"

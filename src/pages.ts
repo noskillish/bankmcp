@@ -90,6 +90,15 @@ export function failedPage(message: string): string {
   return shell("Bank not connected", `<p class="error">${esc(message)}</p><p class="muted">Go back to your assistant and start again.</p>`, { kind: "error", pill: "Not connected" });
 }
 
+export function signedInPage(): string {
+  return shell(
+    "Signed in",
+    `<p>This sign-in already went through. Your assistant has access. You can close this tab.</p>
+     <p class="muted">If your assistant still shows the connector as not connected, click Connect there once more and sign in again.</p>`,
+    { kind: "ok", pill: "Signed in" },
+  );
+}
+
 export function signInFailedPage(message: string): string {
   return shell("Sign-in failed", `<p class="error">${esc(message)}</p>`, { kind: "error", pill: "Not signed in" });
 }

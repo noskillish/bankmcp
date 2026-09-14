@@ -9,7 +9,7 @@ import { config, isConfigured, setupProblems } from "./config.ts";
 import { eb, EnableBankingError } from "./enablebanking.ts";
 import { store } from "./store.ts";
 import { SingleUserProvider } from "./auth.ts";
-import { connectedPage, failedPage, loginPage, privacyPage, setupPage, signInFailedPage, statusPage, termsPage } from "./pages.ts";
+import { connectedPage, failedPage, loginPage, privacyPage, setupPage, signedInPage, signInFailedPage, statusPage, termsPage } from "./pages.ts";
 import { applySetup, setupAvailable } from "./setup.ts";
 import { createServer, VERSION } from "./mcp.ts";
 import { startWatcher } from "./watcher.ts";
@@ -122,7 +122,8 @@ export function createApp(opts: AppOptions) {
   if (opts.remote) app.post("/login", express.urlencoded({ extended: false }), (req, res) => {
     const { request, password } = req.body as Record<string, string | undefined>;
     const result = provider.completeLogin(String(request ?? ""), String(password ?? ""), req.ip ?? "unknown");
-    if ("redirect" in result) return void res.redirect(302, result.redirect);
+    if ("redirect" in result) return void res.redirect(303, result.redirect);
+    if ("done" in result) return void res.status(200).type("html").send(signedInPage());
     if (result.requestId) return void res.status(401).type("html").send(loginPage({ requestId: result.requestId, error: result.error }));
     res.status(400).type("html").send(signInFailedPage(result.error));
   });

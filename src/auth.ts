@@ -18,6 +18,7 @@ const ACCESS_TTL = 60 * 60; // 1 hour
 const REFRESH_TTL = 90 * 24 * 60 * 60; // 90 days
 const CODE_TTL = 10 * 60;
 const LOGIN_TTL = 30 * 60;
+const DONE_TTL = 30 * 60; // how long a used sign-in page is remembered, so a repeat submit gets a calm answer
 
 // --- Password ---
 
@@ -74,6 +75,7 @@ export interface LoginEvent {
 
 export class SingleUserProvider implements OAuthServerProvider {
   private pendingLogins = new Map<string, PendingLogin>();
+  private completedLogins = new Map<string, number>();
   private failures = new Map<string, { count: number; until: number }>();
   private store: Store;
   private onLogin?: (e: LoginEvent) => void;
@@ -86,6 +88,7 @@ export class SingleUserProvider implements OAuthServerProvider {
   /** Every token and pending code is dropped. Used when the admin password changes. */
   revokeAll(): void {
     this.pendingLogins.clear();
+    this.completedLogins.clear();
     this.store.update((d) => {
       d.oauth.tokens = {};
       d.oauth.codes = {};
@@ -128,7 +131,7 @@ export class SingleUserProvider implements OAuthServerProvider {
   }
 
   /** Called by POST /login. Returns the redirect URL on success, or an error message. */
-  completeLogin(requestId: string, password: string, ip: string): { redirect: string } | { error: string; requestId?: string } {
+  completeLogin(requestId: string, password: string, ip: string): { redirect: string } | { done: true } | { error: string; requestId?: string } {
     this.sweep();
     const lock = this.failures.get(ip);
     if (lock && lock.until > now()) {
@@ -137,6 +140,9 @@ export class SingleUserProvider implements OAuthServerProvider {
     }
 
     const pending = this.pendingLogins.get(requestId);
+    // Browsers sometimes re-submit the form after the redirect (Safari on "back", a double click).
+    // The sign-in already went through, so say so instead of reporting a failure.
+    if (!pending && this.completedLogins.has(requestId)) return { done: true };
     if (!pending) return { error: "This sign-in page has expired or the server restarted. Go back to your assistant, click Connect again, and enter the password within 30 minutes." };
 
     if (!verifyPassword(password)) {
@@ -151,6 +157,7 @@ export class SingleUserProvider implements OAuthServerProvider {
     }
 
     this.pendingLogins.delete(requestId);
+    this.completedLogins.set(requestId, now() + DONE_TTL);
     this.failures.delete(ip);
     this.onLogin?.({ ok: true, ip, clientName: pending.client.client_name });
     const code = token();
@@ -226,6 +233,7 @@ export class SingleUserProvider implements OAuthServerProvider {
   private sweep() {
     const t = now();
     for (const [k, v] of this.pendingLogins) if (v.expires < t) this.pendingLogins.delete(k);
+    for (const [k, v] of this.completedLogins) if (v < t) this.completedLogins.delete(k);
     for (const [k, v] of this.failures) if (v.until && v.until < t) this.failures.delete(k);
   }
 }

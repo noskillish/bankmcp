@@ -51,7 +51,9 @@ test("full authorization code flow with PKCE, refresh and revocation", async () 
   assert.equal(url.searchParams.get("state"), "xyz");
   const code = url.searchParams.get("code")!;
 
-  assert.ok("error" in provider.completeLogin(requestId!, "correct horse", "1.2.3.4"), "request id is single use");
+  const again = provider.completeLogin(requestId!, "correct horse", "1.2.3.4");
+  assert.ok("done" in again, "a repeat submit of a used sign-in page reports done, not an error");
+  assert.ok("error" in provider.completeLogin("never-issued", "correct horse", "1.2.3.4"), "an unknown request id is an error");
 
   assert.equal(await provider.challengeForAuthorizationCode(client, code), "challenge");
   const tokens = await provider.exchangeAuthorizationCode(client, code, undefined, client.redirect_uris[0]);
