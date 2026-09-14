@@ -9,7 +9,7 @@ Guide one person through a hosted deployment. Prefer Railway unless the user nam
 
 ## 1. Choose the host
 
-Ask which they have: Railway, Fly.io, or their own box with Docker. If none, recommend Railway (https://railway.com) and wait until they have an account.
+Ask which they have: Railway, Fly.io, Render, or their own box with Docker. If none, recommend Railway (https://railway.com) and wait until they have an account.
 
 ## 2. Railway
 
@@ -28,7 +28,7 @@ Report the public address. No variables are needed; the server detects its own a
 
 ## 3. Fly.io or Docker
 
-Fly: `fly launch --no-deploy` from a clone of the repo, `fly volumes create data --size 1`, add a `[mounts]` entry for `/data`, `fly deploy`. Docker: `docker compose up -d` from a clone, then a TLS proxy in front and `BASE_URL` set to the public https address.
+Fly: from a clone of the repo, `fly launch --copy-config --no-deploy` (the repo's `fly.toml` already mounts `/data` and checks `/healthz`), `fly volumes create data --size 1`, `fly deploy`. Render: the Deploy to Render button in the README uses `render.yaml`; a persistent disk needs a paid instance. Docker: `docker run -d --name bankmcp --restart unless-stopped -p 8080:8080 -v bankmcp-data:/data ghcr.io/noskillish/bankmcp:latest` (or `docker compose up -d` from a clone), then a TLS proxy in front and `BASE_URL` set to the public https address.
 
 ## 4. Setup page
 
