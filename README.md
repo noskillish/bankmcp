@@ -123,38 +123,33 @@ Open the address. A fresh server shows a setup page.
 
 #### 2. Register an Enable Banking application
 
-The setup page lists the exact values Enable Banking's form asks for: the
-redirect URL, a description for the consent screen, and the privacy and
-terms URLs, all pointing at your server. At
-<https://enablebanking.com/cp/applications> create an application with them:
+The setup page can do this for you. Enter the email of your Enable Banking
+account (or the one you want to create it with) and press *Send me the
+sign-in link*. Enable Banking emails you a one-time link; paste it on the
+next page. Your server signs in with it once, creates the application with
+the right redirect and policy addresses, generates the key pair and stores
+the id and the key. The sign-in is not kept. On a local server the click on
+the link does the same without pasting.
 
-- Environment: **Production** for your real accounts, **Sandbox** for test
-  data (see *Going live* below for the production rules).
-- Keep "generate private key" selected. A `.pem` file downloads once when you
-  save; that is the key. The application id (a UUID) is shown after saving.
+Or by hand: the setup page lists the exact values Enable Banking's form asks
+for, with Copy buttons. At <https://enablebanking.com/cp/applications> create
+an application with them, keep *generate private key* selected, and save. A
+`.pem` file downloads once; that is the key. Paste the application id and
+choose the `.pem` file on the setup page. Before anything is stored, the id
+and key are checked against Enable Banking.
+
+Either way: **Production** for your real accounts, **Sandbox** for test data.
+A production application for your own accounts is activated once in the
+Control Panel with *Activate by linking accounts*; see *Going live* below.
 
 #### 3. Finish setup
 
-Back on the setup page: paste the application id, choose the `.pem` file, pick
-a password of twelve characters or more. Everything is stored on the volume,
-and the page turns into a status page showing the connector URL for your
-assistant.
+Choose a password of twelve characters or more. A *Ready* page then shows
+what was checked: the application, whether its redirect URL is registered and
+whether it is active, and the connector address to copy.
 
 Prefer configuration by environment? Set these and the setup page does not
-appears:
-
-| Variable | Value |
-|---|---|
-| `EB_APP_ID` | the application id |
-| `EB_PRIVATE_KEY` | the `.pem` contents, base64: `base64 -i app.pem \| tr -d '\n'` |
-| `ADMIN_PASSWORD_HASH` | output of `npm run hash-password` (or set `ADMIN_PASSWORD`) |
-| `BASE_URL` | `https://YOUR-HOST` (Railway, Fly and Render set this for you) |
-| `DEFAULT_COUNTRY` | your country code, e.g. `DK` |
-| `APP_NAME` | optional, the name shown on the sign-in and status pages (default `BankMCP™`) |
-
-Optional: `NOTIFY_WEBHOOK_URL` for watch notifications and sign-in alerts (a
-Slack incoming webhook works). Full list in [.env.example](.env.example).
-`npm run check` verifies a configuration from a terminal.
+appear:
 
 #### 4. Add the connector in your assistant
 
