@@ -101,7 +101,9 @@ export function createApp(opts: AppOptions) {
     res.redirect(303, "/");
   });
 
-  app.get("/healthz", (_req, res) => void res.json({ ok: true, version: VERSION, configured: isConfigured() }));
+  // Readable from any origin: the Get started page on the website polls it from the visitor's browser
+  // to tell when their own server is up. It carries no data beyond "running" and "configured".
+  app.get("/healthz", (_req, res) => void res.set("Access-Control-Allow-Origin", "*").json({ ok: true, version: VERSION, configured: isConfigured() }));
 
   app.get("/privacy", (_req, res) => void res.type("html").send(privacyPage()));
   app.get("/terms", (_req, res) => void res.type("html").send(termsPage()));
