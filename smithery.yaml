@@ -1,7 +1,0 @@
-# Smithery listing: how to start the server locally. It runs on the user's
-# machine; Smithery does not host it.
-startCommand:
-  type: stdio
-  configSchema: {}
-  commandFunction: |-
-    (config) => ({ "command": "npx", "args": ["-y", "bankmcp"] })
