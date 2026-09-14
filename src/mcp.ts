@@ -14,6 +14,7 @@ export function createServer(): McpServer {
         "Transaction amounts are signed: negative is money out. Use the `booked` balance for totals and net worth; `available` may include credit lines.",
         "Banks return a limited history (often 90 days, some up to 2 years). If a date range comes back empty, say so rather than assuming there were no transactions.",
         "If a tool says a consent is no longer valid, use start_consent for that bank; nothing else is lost.",
+        "If a tool answers that the server is not set up or that the Enable Banking application is not active, relay its instructions to the user word for word. Those are one-time steps in a browser; retrying does not help.",
       ].join(" "),
     },
   );
