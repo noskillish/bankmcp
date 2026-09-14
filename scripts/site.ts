@@ -11,6 +11,7 @@ const SITE = "https://bankmcp.dk";
 const GITHUB = "https://github.com/noskillish/bankmcp";
 const index = readFileSync("docs/index.html", "utf8");
 const style = index.slice(index.indexOf("<style>"), index.indexOf("</style>") + 8);
+const FAQ_SECTION = (index.match(/<section id="faq">[\s\S]*?<\/section>/) ?? [""])[0];
 
 interface BankList {
   fetched: string;
@@ -120,7 +121,7 @@ function render(page: Page & { crumbs?: Crumb[]; extraLd?: object[]; active?: st
       ...(page.extraLd ?? []),
     ],
   };
-  const body = page.body.replace("<!--HOW-->", HOW_SECTION.trimEnd()).replace("<!--NOT-->", NOT_SECTION.trimEnd());
+  const body = page.body.replace("<!--HOW-->", HOW_SECTION.trimEnd()).replace("<!--NOT-->", NOT_SECTION.trimEnd()).replace("<!--FAQ-->", FAQ_SECTION);
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
