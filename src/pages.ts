@@ -85,7 +85,7 @@ export function loginPage(opts: { requestId: string; clientName?: string; return
      ${opts.error ? `<p class="error">${esc(opts.error)}</p>` : ""}
      <form method="post" action="/login">
        <input type="hidden" name="request" value="${esc(opts.requestId)}">
-       <label for="pw">Password</label>
+       <label for="pw">The password chosen when this server was set up</label>
        <input id="pw" type="password" name="password" autofocus autocomplete="current-password" required>
        <button type="submit">Allow access</button>
      </form>
@@ -181,8 +181,8 @@ export function setupPage(opts: { error?: string; values?: { app_id?: string; co
     ? ""
     : `<div class="stepblock">
        <div class="stepno">3</div>
-       <h2>Choose a password</h2>
-       <p class="muted">Your assistant signs in with it once. It is the only thing between the internet and your accounts, so make it long.</p>
+       <h2>Choose the password for your assistant</h2>
+       <p class="muted">This is the password you type when you connect your assistant to this server, once per assistant. It is the only thing between the internet and your accounts, so make it long.</p>
        <label for="password">Password, 12 characters or more</label>
        <div class="pwrow"><input id="password" type="password" name="password" required minlength="12" autocomplete="new-password"><button type="button" class="ghost" id="showpw">Show</button></div>
        <p class="hint" id="pwhint"></p>
@@ -207,7 +207,7 @@ export function setupPage(opts: { error?: string; values?: { app_id?: string; co
            <input id="country_r" name="country" maxlength="2" placeholder="DK" value="${esc(v.country ?? "")}" style="text-transform:uppercase"></div>
          </div>
          <button type="submit" id="sendlink">Send me the sign-in link</button>
-         <p class="hint center" id="sendhint">Then choose a password on the next page.</p>
+         <p class="hint center" id="sendhint">Then choose the password your assistant will use, on the next page.</p>
        </form>
      </div>
      <p class="or"><span>or by hand</span></p>
@@ -306,8 +306,8 @@ function passwordOnlyPage(registered: { appId: string; email?: string }, error?:
      ${error ? `<p class="error banner">${esc(error)}</p>` : ""}
      <form method="post" action="/setup" id="setup" novalidate>
        <div class="stepblock">
-         <h2>One thing left: a password</h2>
-         <p class="muted">Your assistant signs in with it once. It is the only thing between the internet and your accounts, so make it long.</p>
+         <h2>One thing left: the password for your assistant</h2>
+         <p class="muted">This is the password you type when you connect your assistant to this server, once per assistant. It is the only thing between the internet and your accounts, so make it long.</p>
          <label for="password">Password, 12 characters or more</label>
          <div class="pwrow"><input id="password" type="password" name="password" required minlength="12" autocomplete="new-password" autofocus><button type="button" class="ghost" id="showpw">Show</button></div>
          <p class="hint" id="pwhint"></p>
@@ -387,7 +387,7 @@ export function welcomePage(input: { application?: { name: string; environment: 
      <h2 style="margin-top:22px">Next</h2>
      <div class="stepblock">
        <div class="stepno">1</div>
-       <p><b>Add the connector to your assistant.</b> In claude.ai: Settings → Connectors → Add custom connector, paste this address, keep the detected options, then Connect and sign in with your password. Other MCP clients take the same address as a remote server.</p>
+       <p><b>Add the connector to your assistant.</b> In claude.ai: Settings → Connectors → Add custom connector, paste this address, keep the detected options, then Connect and enter the password you chose a moment ago. Other MCP clients take the same address as a remote server.</p>
        ${row("Connector address", input.mcpUrl)}
      </div>
      <div class="stepblock">
