@@ -4,12 +4,26 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BankMCP™ · Your AI now reads your bank.</title>
-<meta name="description" content="BankMCP™ is open-source software you run yourself that lets you ask your AI assistant about your own bank accounts. Read-only, self-hosted, on open banking.">
-<meta property="og:title" content="BankMCP™ · Your AI now reads your bank.">
-<meta property="og:description" content="Ask your assistant about your balance, your spending, whether the invoice landed. Read-only, on a server you run, through open banking. Open source.">
+<meta name="description" content="BankMCP™ is an open-source MCP server for your own bank accounts. You run it yourself. Claude, ChatGPT or any MCP client can read your balances and transactions through Enable Banking. Read-only, self-hosted.">
+<link rel="canonical" href="https://bankmcp.dk/">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<meta name="application-name" content="BankMCP™">
+<meta name="theme-color" content="#f5f2ec">
+<meta property="og:site_name" content="BankMCP™">
+<meta property="og:locale" content="en_US">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://bankmcp.dk/">
-<meta name="twitter:card" content="summary">
+<meta property="og:title" content="BankMCP™ · Your AI now reads your bank.">
+<meta property="og:description" content="Open-source MCP server for your own bank accounts. Read-only, on a server you run, through open banking. Works with Claude, ChatGPT or any MCP client.">
+<meta property="og:image" content="https://bankmcp.dk/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="BankMCP™. Your AI now reads your bank.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="BankMCP™ · Your AI now reads your bank.">
+<meta name="twitter:description" content="Open-source MCP server for your own bank accounts. Read-only, on a server you run, through open banking.">
+<meta name="twitter:image" content="https://bankmcp.dk/og.png">
+<link rel="sitemap" type="application/xml" href="https://bankmcp.dk/sitemap.xml">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231a1a1a'/><text x='50' y='70' font-family='Helvetica,Arial,sans-serif' font-weight='700' font-size='58' text-anchor='middle' fill='%23f5f2ec'>B</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -140,6 +154,12 @@
   }
   .artifact .note { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--muted); font-weight: 300; }
 
+  .faq { margin-top: 2.5rem; max-width: 680px; }
+  .faq .q { border-top: 1px solid var(--border); padding: 1.25rem 0; }
+  .faq .q:last-child { border-bottom: 1px solid var(--border); }
+  .faq h3 { font-size: 0.95rem; font-weight: 500; letter-spacing: -0.01em; margin-bottom: 0.4rem; }
+  .faq p { font-size: 0.88rem; color: var(--dim); font-weight: 300; line-height: 1.6; }
+  .faq code { font-size: 0.8rem; color: var(--ink); }
   .fine { font-size: 0.82rem; color: var(--dim); font-weight: 300; line-height: 1.65; max-width: 680px; }
   .fine p + p { margin-top: 0.85rem; } .fine strong { color: var(--ink); font-weight: 500; }
 
@@ -149,6 +169,127 @@
   footer p { font-size: 0.75rem; color: var(--muted); }
   footer nav { gap: 1.25rem; } footer a { font-size: 0.75rem; color: var(--dim); text-decoration: none; } footer a:hover { color: var(--ink); }
 </style>
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "WebSite",
+   "@id": "https://bankmcp.dk/#website",
+   "url": "https://bankmcp.dk/",
+   "name": "BankMCP™",
+   "alternateName": [
+    "BankMCP",
+    "Bank MCP",
+    "bankmcp"
+   ],
+   "inLanguage": "en"
+  },
+  {
+   "@type": "SoftwareApplication",
+   "@id": "https://bankmcp.dk/#software",
+   "name": "BankMCP™",
+   "alternateName": [
+    "BankMCP",
+    "Bank MCP",
+    "bankmcp"
+   ],
+   "url": "https://bankmcp.dk/",
+   "description": "Open-source, self-hosted MCP server that lets an AI assistant read your own bank accounts through Enable Banking. Read-only, one user, no payment tools.",
+   "applicationCategory": "FinanceApplication",
+   "applicationSubCategory": "MCP server",
+   "operatingSystem": "Node.js 24 or later, Docker",
+   "softwareVersion": "0.1.5",
+   "license": "https://github.com/noskillish/bankmcp/blob/main/LICENSE",
+   "isAccessibleForFree": true,
+   "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "EUR"
+   },
+   "downloadUrl": "https://www.npmjs.com/package/bankmcp",
+   "installUrl": "https://github.com/noskillish/bankmcp#setup",
+   "softwareHelp": {
+    "@type": "CreativeWork",
+    "url": "https://github.com/noskillish/bankmcp#readme"
+   },
+   "sameAs": [
+    "https://github.com/noskillish/bankmcp",
+    "https://www.npmjs.com/package/bankmcp"
+   ],
+   "featureList": [
+    "Read balances and transactions of your own bank accounts",
+    "Works with any MCP client",
+    "Runs on your own machine or server",
+    "Open banking via Enable Banking, 2,700+ European banks",
+    "No payment tools"
+   ]
+  },
+  {
+   "@type": "FAQPage",
+   "@id": "https://bankmcp.dk/#faq",
+   "mainEntity": [
+    {
+     "@type": "Question",
+     "name": "What is BankMCP™?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "BankMCP™ (also written Bank MCP or bankmcp) is an open-source MCP server for your own bank accounts. You run it yourself. It connects to your banks through Enable Banking and lets an AI assistant read your balances and transactions. It has no payment tools."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Which AI assistants work with it?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Any client that supports the Model Context Protocol. Claude, ChatGPT, Mistral, Cursor and local models through Ollama are examples. It has been tested with Claude and Ollama."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Which banks does it cover?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "The banks Enable Banking covers: around 2,700 bank connections in 29 European countries at the time of writing. Enable Banking publishes the list."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "What does it cost?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "The software is free under the MIT licence. Registering at Enable Banking is free for your own accounts. You pay for whatever you run it on, and on your own machine that is nothing."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Where does my data go?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "From your bank to Enable Banking to your server to your assistant. Your server fetches balances and transactions when asked and does not save them. Nothing goes to the makers of BankMCP™. Your assistant keeps the conversation, as any chat does."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Can it make payments?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "No. It uses account information access only, which is read-only, and it has no payment tools."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "How do I run it?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "On your machine with npx bankmcp, in Claude Desktop with the bundle from the GitHub releases, or as one container on Railway or Fly. A new server shows a setup page in the browser. There is no hosted version; you deploy your own copy and you are its only user."
+     }
+    }
+   ]
+  }
+ ]
+}
+</script>
 </head>
 <body>
 
@@ -158,6 +299,7 @@
     <nav>
       <a href="#how">How it works</a>
       <a href="#safe">What it does</a>
+      <a href="#faq">Questions</a>
       <a href="https://github.com/noskillish/bankmcp">GitHub</a>
     </nav>
   </div>
@@ -241,6 +383,22 @@
       <div class="fact"><h3>Any MCP client</h3><p>Standard MCP, so Claude, ChatGPT, Mistral, Cursor or a local model can connect. Tested with Claude and Ollama.</p></div>
       <div class="fact"><h3>2,700+ European banks</h3><p>The banks Enable Banking covers. No contract is needed for your own accounts.</p></div>
       <div class="fact"><h3>Easy to stop</h3><p>Change the password, revoke the consent at your bank, or delete the server.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="container">
+    <div class="eyebrow">Questions</div>
+    <h2>Short answers.</h2>
+    <div class="faq">
+      <div class="q"><h3>What is BankMCP™?</h3><p>BankMCP™ (also written Bank MCP or bankmcp) is an open-source MCP server for your own bank accounts. You run it yourself. It connects to your banks through Enable Banking and lets an AI assistant read your balances and transactions. It has no payment tools.</p></div>
+      <div class="q"><h3>Which AI assistants work with it?</h3><p>Any client that supports the Model Context Protocol. Claude, ChatGPT, Mistral, Cursor and local models through Ollama are examples. It has been tested with Claude and Ollama.</p></div>
+      <div class="q"><h3>Which banks does it cover?</h3><p>The banks Enable Banking covers: around 2,700 bank connections in 29 European countries at the time of writing. Enable Banking publishes the list.</p></div>
+      <div class="q"><h3>What does it cost?</h3><p>The software is free under the MIT licence. Registering at Enable Banking is free for your own accounts. You pay for whatever you run it on, and on your own machine that is nothing.</p></div>
+      <div class="q"><h3>Where does my data go?</h3><p>From your bank to Enable Banking to your server to your assistant. Your server fetches balances and transactions when asked and does not save them. Nothing goes to the makers of BankMCP™. Your assistant keeps the conversation, as any chat does.</p></div>
+      <div class="q"><h3>Can it make payments?</h3><p>No. It uses account information access only, which is read-only, and it has no payment tools.</p></div>
+      <div class="q"><h3>How do I run it?</h3><p>On your machine with <code>npx bankmcp</code>, in Claude Desktop with the bundle from the GitHub releases, or as one container on Railway or Fly. A new server shows a setup page in the browser. There is no hosted version; you deploy your own copy and you are its only user.</p></div>
     </div>
   </div>
 </section>

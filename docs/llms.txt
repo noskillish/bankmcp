@@ -1,0 +1,17 @@
+# BankMCP™
+
+> BankMCP™ (also written Bank MCP or bankmcp) is an open-source MCP server for your own bank accounts. You run it yourself. It connects to your banks through Enable Banking and lets an AI assistant read balances and transactions. Read-only, self-hosted, one user. It has no payment tools. MIT licence.
+
+Works with any client that supports the Model Context Protocol: Claude, ChatGPT, Mistral, Cursor, or a local model. Covers the banks Enable Banking covers, around 2,700 bank connections in 29 European countries at the time of writing. There is no hosted version; each user deploys their own copy.
+
+## Links
+
+- [Landing page](https://bankmcp.dk/): what it is and what it does
+- [Source code and setup guide](https://github.com/noskillish/bankmcp): README with setup for local use and for a server
+- [npm package](https://www.npmjs.com/package/bankmcp): run locally with `npx bankmcp`
+- [Releases](https://github.com/noskillish/bankmcp/releases): Claude Desktop bundle (.mcpb)
+- [Enable Banking](https://enablebanking.com): the open-banking provider it connects through
+
+## Notes
+
+- BankMCP™ is software, not a service. Use at your own risk. It is not a bank, does not give financial advice, and is not affiliated with Enable Banking, Anthropic or any bank.
