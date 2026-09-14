@@ -58,7 +58,11 @@ export async function startRegistration(input: RegistrationInput, baseUrl: strin
   if (country && !/^[A-Z]{2}$/.test(country)) return { error: "Country should be a two-letter code such as DK." };
 
   const state = randomBytes(16).toString("base64url");
-  const continueUrl = `${baseUrl.replace(/\/+$/, "")}/setup/complete?state=${state}`;
+  // Enable Banking's sign-in system only lets the link return to localhost. On a local server the
+  // click lands here directly; on a hosted server the user pastes the link from the email instead,
+  // and the return address is a harmless placeholder.
+  const returnBase = config.localMode ? baseUrl.replace(/\/+$/, "") : "http://localhost:8080";
+  const continueUrl = `${returnBase}/setup/complete?state=${state}`;
   try {
     await deps.requestSignInLink(email, continueUrl);
   } catch (err) {
@@ -70,10 +74,32 @@ export async function startRegistration(input: RegistrationInput, baseUrl: strin
   return { email };
 }
 
-/** Step two, reached from the link in the email. Creates the application and stores id and key. */
-export async function finishRegistration(query: { state?: string; oobCode?: string }, baseUrl: string, deps: Deps = live): Promise<{ error: string } | Registered> {
+/** Pulls the sign-in code (and our state, if present) out of a pasted email link, however it is wrapped. */
+export function parseSignInLink(link: string): { oobCode?: string; state?: string } {
+  let text = link.trim();
+  for (let i = 0; i < 3; i++) {
+    try {
+      const decoded = decodeURIComponent(text);
+      if (decoded === text) break;
+      text = decoded;
+    } catch {
+      break;
+    }
+  }
+  const oobCode = /[?&]oobCode=([A-Za-z0-9_-]+)/.exec(text)?.[1];
+  const state = /[?&]state=([A-Za-z0-9_-]+)/.exec(text)?.[1];
+  return { oobCode, state };
+}
+
+/** Step two: the emailed link, clicked (local) or pasted (hosted). Creates the application and stores id and key. */
+export async function finishRegistration(query: { state?: string; oobCode?: string; link?: string }, baseUrl: string, deps: Deps = live): Promise<{ error: string } | Registered> {
   const p = pending;
   if (!p || p.expires < Date.now()) return { error: "This sign-in link belongs to a registration that has expired or was never started here. Start again from the setup page." };
+  if (query.link) {
+    const parsed = parseSignInLink(query.link);
+    if (!parsed.oobCode) return { error: "That does not look like the sign-in link. Copy the whole link from Enable Banking's email; it contains oobCode=… somewhere in it." };
+    query = { oobCode: parsed.oobCode, state: parsed.state ?? p.state };
+  }
   if (!query.state || query.state !== p.state) return { error: "This sign-in link does not match the registration started on this server. Start again from the setup page." };
   if (!query.oobCode) return { error: "The link is missing its sign-in code. Open the link from the email again." };
 
@@ -128,6 +154,11 @@ export function registeredButUnfinished(): { appId: string; email?: string } | n
   if (!config.appId || !(config.privateKey || config.privateKeyPath)) return null;
   if (config.localMode || config.adminPasswordHash || config.adminPassword) return null;
   return { appId: config.appId, email: config.registeredEmail };
+}
+
+/** The email a registration is waiting on, if any. */
+export function pendingEmail(): string | undefined {
+  return pending && pending.expires > Date.now() ? pending.email : undefined;
 }
 
 /** For tests. */

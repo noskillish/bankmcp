@@ -11,7 +11,7 @@ import { store } from "./store.ts";
 import { SingleUserProvider } from "./auth.ts";
 import { connectedPage, failedPage, loginPage, privacyPage, returningPage, setupPage, signedInPage, welcomePage, checkEmailPage, signInFailedPage, statusPage, termsPage } from "./pages.ts";
 import { applyPassword, applySetup, setupAvailable } from "./setup.ts";
-import { finishRegistration, registeredButUnfinished, startRegistration } from "./register.ts";
+import { finishRegistration, pendingEmail, registeredButUnfinished, startRegistration } from "./register.ts";
 import { createServer, VERSION } from "./mcp.ts";
 import { startWatcher } from "./watcher.ts";
 
@@ -107,17 +107,30 @@ export function createApp(opts: AppOptions) {
     res.type("html").send(checkEmailPage(result.email));
   });
 
-  app.get("/setup/complete", async (req, res) => {
-    if (!setupAvailable()) return void res.status(404).type("html").send(failedPage("Setup is already complete."));
-    const q = req.query as Record<string, string | undefined>;
-    const result = await finishRegistration({ state: q.state, oobCode: q.oobCode }, config.baseUrl);
-    if ("error" in result) return void res.status(400).set("Content-Security-Policy", setupCsp).type("html").send(setupPage({ error: result.error, baseUrl: config.baseUrl }));
+  const complete = async (input: { state?: string; oobCode?: string; link?: string }, res: express.Response) => {
+    const result = await finishRegistration(input, config.baseUrl);
+    if ("error" in result) {
+      const email = pendingEmail();
+      if (input.link && email) return void res.status(400).set("Content-Security-Policy", setupCsp).type("html").send(checkEmailPage(email, { error: result.error, paste: true }));
+      return void res.status(400).set("Content-Security-Policy", setupCsp).type("html").send(setupPage({ error: result.error, baseUrl: config.baseUrl }));
+    }
     log(`registration: application ${result.appId} created (${result.environment})`);
     if (config.localMode) {
       startWatcherOnce();
       return void res.redirect(303, "/?welcome");
     }
     res.redirect(303, "/");
+  };
+
+  // Local mode: the click on the emailed link lands here. Hosted: the user pastes the link (POST).
+  app.get("/setup/complete", async (req, res) => {
+    if (!setupAvailable()) return void res.status(404).type("html").send(failedPage("Setup is already complete."));
+    const q = req.query as Record<string, string | undefined>;
+    await complete({ state: q.state, oobCode: q.oobCode }, res);
+  });
+  app.post("/setup/complete", express.urlencoded({ extended: false, limit: "16kb" }), async (req, res) => {
+    if (!setupAvailable()) return void res.status(404).type("html").send(failedPage("Setup is already complete."));
+    await complete({ link: String((req.body as Record<string, string | undefined>).link ?? "") }, res);
   });
 
   app.post("/setup", express.urlencoded({ extended: false, limit: "64kb" }), async (req, res) => {

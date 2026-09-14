@@ -7,7 +7,7 @@ import { join } from "node:path";
 const dir = mkdtempSync(join(tmpdir(), "bank-register-"));
 process.env.DATA_DIR = dir;
 for (const k of ["EB_APP_ID", "EB_PRIVATE_KEY", "EB_PRIVATE_KEY_PATH", "ADMIN_PASSWORD", "ADMIN_PASSWORD_HASH", "BANKMCP_LOCAL"]) delete process.env[k];
-const { startRegistration, finishRegistration, registeredButUnfinished, _resetPending } = await import("../src/register.ts");
+const { startRegistration, finishRegistration, registeredButUnfinished, parseSignInLink, _resetPending } = await import("../src/register.ts");
 const { ControlPanelError, newKeyPair } = await import("../src/controlpanel.ts");
 const { config } = await import("../src/config.ts");
 const { applyPassword, setupAvailable } = await import("../src/setup.ts");
@@ -56,4 +56,11 @@ test("registration sends the link with a state, then creates the application and
   assert.equal(applyPassword({ password: "a-long-password!", password2: "a-long-password!" }), null);
   assert.equal(setupAvailable(), false);
   assert.equal(registeredButUnfinished(), null);
+});
+
+test("a pasted email link yields the sign-in code however it is wrapped", () => {
+  assert.equal(parseSignInLink("https://enablebanking.com/cp/auth?mode=signIn&oobCode=AbC-123_x&continueUrl=http%3A%2F%2Flocalhost%3A8080%2Fsetup%2Fcomplete%3Fstate%3Ds1").oobCode, "AbC-123_x");
+  assert.equal(parseSignInLink("https://enablebanking.com/cp/auth?mode=signIn&oobCode=AbC-123_x&continueUrl=http%3A%2F%2Flocalhost%3A8080%2Fsetup%2Fcomplete%3Fstate%3Ds1").state, "s1");
+  assert.equal(parseSignInLink("https://x.page.link/?link=https%3A%2F%2Fenablebanking.com%2Fauth%3FoobCode%3DZZ9%26mode%3DsignIn").oobCode, "ZZ9");
+  assert.equal(parseSignInLink("hello").oobCode, undefined);
 });

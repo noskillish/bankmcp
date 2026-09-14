@@ -196,7 +196,7 @@ export function setupPage(opts: { error?: string; values?: { app_id?: string; co
      ${opts.error ? `<p class="error banner">${esc(opts.error)}</p>` : ""}
      <div class="box">
        <h2>Let this server register the application</h2>
-       <p class="muted">Enable Banking sends you their sign-in link. When you click it, this server creates the application in your Enable Banking account, with the right redirect and policy addresses, and makes the key. The sign-in is used for that one step and not kept. If you have no Enable Banking account yet, the same link creates one.</p>
+       <p class="muted">Enable Banking emails you their sign-in link. ${config.localMode ? "When you click it," : "You paste it on the next page, and"} this server creates the application in your Enable Banking account, with the right redirect and policy addresses, and makes the key. The sign-in is used for that one step and not kept. If you have no Enable Banking account yet, the same link creates one.</p>
        <form method="post" action="/setup/register" id="register" novalidate>
          <label for="email">Email of your Enable Banking account</label>
          <input id="email" name="email" type="email" required autocomplete="email" spellcheck="false" placeholder="you@example.com" value="${esc(v.email ?? "")}">
@@ -335,14 +335,34 @@ function passwordOnlyPage(registered: { appId: string; email?: string }, error?:
   );
 }
 
-export function checkEmailPage(email: string): string {
-  return shell(
-    "Check your email",
-    `<p>Enable Banking has sent a sign-in link to <b>${esc(email)}</b>.</p>
-     <p class="muted">Open it on this device. It comes back to this server, which then creates the application and the key. The link works once and for a limited time. If nothing arrives within a few minutes, check the spam folder, then <a href="/">start again</a>.</p>
-     <p class="muted small">Nothing has been stored yet.</p>`,
-    { kind: "neutral", pill: "Waiting for the link" },
-  );
+export function checkEmailPage(email: string, opts: { error?: string; paste?: boolean } = {}): string {
+  const paste = opts.paste ?? !config.localMode;
+  const body = paste
+    ? `<p>Enable Banking has sent a sign-in link to <b>${esc(email)}</b>.</p>
+       <p class="muted">Do not click it. Enable Banking only lets that link return to a program on your own computer, so paste it here instead: in the email, right-click the button or link, choose <b>Copy Link</b>, and paste.</p>
+       ${opts.error ? `<p class="error banner">${esc(opts.error)}</p>` : ""}
+       <form method="post" action="/setup/complete" id="paste" novalidate>
+         <label for="link">The sign-in link from the email</label>
+         <textarea id="link" name="link" rows="4" placeholder="https://enablebanking.com/…oobCode=…" spellcheck="false" autofocus></textarea>
+         <p class="hint" id="linkhint"></p>
+         <button type="submit" id="submit" disabled>Create the application</button>
+         <p class="hint center">This server signs in with the link once, creates the application and the key, and forgets the sign-in.</p>
+       </form>
+       <p class="muted small" style="margin-top:14px">Nothing has been stored yet. The link works once and for a limited time; if no email arrives, check the spam folder, then <a href="/">start again</a>.</p>
+       <script>
+         const t = document.getElementById("link"), h = document.getElementById("linkhint"), b = document.getElementById("submit"), f = document.getElementById("paste");
+         t.addEventListener("input", () => {
+           const ok = /oobCode=/.test(decodeURIComponent(t.value));
+           h.textContent = t.value.trim() ? (ok ? "Sign-in code found ✓" : "No sign-in code in this yet. Copy the whole link.") : "";
+           h.className = "hint " + (t.value.trim() ? (ok ? "ok" : "err") : "");
+           b.disabled = !ok;
+         });
+         f.addEventListener("submit", () => { b.disabled = true; b.textContent = "Signing in and creating the application…"; });
+       </script>`
+    : `<p>Enable Banking has sent a sign-in link to <b>${esc(email)}</b>.</p>
+       <p class="muted">Open it on this device. It comes back to this server, which then creates the application and the key. The link works once and for a limited time. If nothing arrives within a few minutes, check the spam folder, then <a href="/">start again</a>.</p>
+       <p class="muted small">Nothing has been stored yet.</p>`;
+  return shell("Check your email", body, { kind: "neutral", pill: "Waiting for the link" });
 }
 
 export function welcomePage(input: { application?: { name: string; environment: string; active: boolean; redirect_urls: string[] }; mcpUrl: string; callbackUrl: string }): string {
