@@ -89,10 +89,11 @@ A prebuilt image is published on every release:
 `ghcr.io/noskillish/bankmcp` (built by [GitHub Actions](.github/workflows/image.yml)
 from the tagged source, `linux/amd64` and `linux/arm64`).
 
-**Railway:** New Project, Deploy from GitHub repo, pick this repo. Add a
-volume mounted at `/data` and generate a domain (Settings, Networking, port
-8080). The Dockerfile and [railway.json](railway.json) are picked up
-automatically, and the server learns its own address from Railway.
+**Railway:** [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new/template/bankmcptm?utm_medium=integration&utm_source=button&utm_campaign=bankmcp)
+deploys the published image with a volume at `/data` and a domain, nothing
+to fill in. Or by hand: New Project, Deploy from GitHub repo, pick this
+repo, add a volume mounted at `/data` and generate a domain (Settings,
+Networking, port 8080). The server learns its own address from Railway.
 
 **Fly.io:** three commands from a checkout, using [fly.toml](fly.toml):
 
