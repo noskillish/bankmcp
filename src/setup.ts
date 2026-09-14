@@ -59,3 +59,12 @@ export async function applySetup(input: SetupInput, verify: Verify | null = chec
   resetKeyCache();
   return null;
 }
+
+/** Password step alone, after the application was registered through the Control Panel flow. */
+export function applyPassword(input: { password?: string; password2?: string }): string | null {
+  const password = input.password ?? "";
+  if (password.length < 12) return "Use a password of at least 12 characters. It is the only thing between the internet and your accounts.";
+  if (password !== input.password2) return "The two passwords do not match.";
+  saveSettings({ admin_password_hash: hashPassword(password), setup_completed: new Date().toISOString() });
+  return null;
+}

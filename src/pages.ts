@@ -49,6 +49,12 @@ export function shell(title: string, body: string, opts: { kind?: Kind; pill?: s
   .copybtn{width:auto;margin:0;padding:6px 10px;font-size:13px;font-weight:600;border-radius:8px;background:transparent;color:var(--ink);border:1px solid var(--line);white-space:nowrap}
   .copybtn:hover{background:var(--bg);opacity:1}
   h2{font-size:17px;letter-spacing:-.01em;margin:0 0 6px}
+  .box{border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;margin:14px 0 0;background:var(--bg)}
+  .box h2{margin-bottom:4px}.box .muted{font-size:14px}
+  .box input,.box select{background:var(--card)}
+  .two{display:grid;grid-template-columns:1fr 6em;gap:12px}.two label{margin-top:14px}
+  select{width:100%;font:inherit;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);appearance:none;-webkit-appearance:none}
+  .or{display:flex;align-items:center;gap:12px;margin:22px 0 2px;color:var(--muted);font-size:13px}.or::before,.or::after{content:"";flex:1;border-top:1px solid var(--line)}
   .stepblock{padding:18px 0 4px;border-top:1px solid var(--line);margin-top:14px}
   .stepblock:first-of-type{border-top:0;margin-top:4px}
   .stepno{font-size:12px;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:999px;width:24px;height:24px;display:inline-grid;place-items:center;margin:0 0 8px}
@@ -165,9 +171,10 @@ export function statusPage(input: { problems: string[]; mcpUrl: string; callback
 
 export const CONSENT_DESCRIPTION = `${config.appName} lets you ask your AI assistant about your own accounts. It reads balances and transactions. It has no payment tools, and only the holder of the password can use it. You can revoke access at your bank at any time.`;
 
-export function setupPage(opts: { error?: string; values?: { app_id?: string; country?: string }; baseUrl?: string } = {}): string {
+export function setupPage(opts: { error?: string; values?: { app_id?: string; country?: string; email?: string }; baseUrl?: string; registered?: { appId: string; email?: string } } = {}): string {
   const v = opts.values ?? {};
   const base = (opts.baseUrl ?? config.baseUrl).replace(/\/+$/, "");
+  if (opts.registered) return passwordOnlyPage(opts.registered, opts.error);
   const row = (label: string, value: string) =>
     `<div class="copy"><p class="muted">${esc(label)}</p><div class="copyrow"><code>${esc(value)}</code><button type="button" class="copybtn" data-copy="${esc(value)}">Copy</button></div></div>`;
   const password = config.localMode
@@ -185,8 +192,25 @@ export function setupPage(opts: { error?: string; values?: { app_id?: string; co
      </div>`;
   return shell(
     `Set up ${config.appName}`,
-    `<p>Three steps, about ten minutes. Everything you enter stays on this server.</p>
+    `<p>Everything you enter stays on this server.</p>
      ${opts.error ? `<p class="error banner">${esc(opts.error)}</p>` : ""}
+     <div class="box">
+       <h2>Let this server register the application</h2>
+       <p class="muted">Enable Banking sends you their sign-in link. When you click it, this server creates the application in your Enable Banking account, with the right redirect and policy addresses, and makes the key. The sign-in is used for that one step and not kept. If you have no Enable Banking account yet, the same link creates one.</p>
+       <form method="post" action="/setup/register" id="register" novalidate>
+         <label for="email">Email of your Enable Banking account</label>
+         <input id="email" name="email" type="email" required autocomplete="email" spellcheck="false" placeholder="you@example.com" value="${esc(v.email ?? "")}">
+         <div class="two">
+           <div><label for="env">Environment</label>
+           <select id="env" name="environment"><option value="PRODUCTION">Production</option><option value="SANDBOX">Sandbox (test data)</option></select></div>
+           <div><label for="country_r">Country</label>
+           <input id="country_r" name="country" maxlength="2" placeholder="DK" value="${esc(v.country ?? "")}" style="text-transform:uppercase"></div>
+         </div>
+         <button type="submit" id="sendlink">Send me the sign-in link</button>
+         <p class="hint center" id="sendhint">Then choose a password on the next page.</p>
+       </form>
+     </div>
+     <p class="or"><span>or by hand</span></p>
      <form method="post" action="/setup" id="setup" novalidate>
      <div class="stepblock">
        <div class="stepno">1</div>
@@ -255,6 +279,10 @@ export function setupPage(opts: { error?: string; values?: { app_id?: string; co
          pw.addEventListener("input", checkPw); pw2.addEventListener("input", checkPw);
          $("showpw").addEventListener("click", () => { const t = pw.type === "password" ? "text" : "password"; pw.type = t; pw2.type = t; $("showpw").textContent = t === "text" ? "Hide" : "Show"; });
        }
+       $("register").addEventListener("submit", (e) => {
+         if (!$("email").checkValidity()) { e.preventDefault(); hint($("sendhint"), "That does not look like an email address.", "err"); return; }
+         $("sendlink").disabled = true; $("sendlink").textContent = "Asking Enable Banking to send it…";
+       });
        $("setup").addEventListener("submit", () => {
          $("submit").disabled = true; $("submit").textContent = "Checking with Enable Banking…";
          hint($("submithint"), "Signing a request with your key and asking Enable Banking about the application. A few seconds.", "");
@@ -263,6 +291,57 @@ export function setupPage(opts: { error?: string; values?: { app_id?: string; co
        update();
      </script>`,
     { kind: "neutral", pill: "First run" },
+  );
+}
+
+function passwordOnlyPage(registered: { appId: string; email?: string }, error?: string): string {
+  return shell(
+    `Set up ${config.appName}`,
+    `<ul class="rows checks">
+       <li><span>Application</span><span class="r ok">registered ✓</span></li>
+       <li><span>Key</span><span class="r ok">made and stored here ✓</span></li>
+       ${registered.email ? `<li><span>Enable Banking account</span><span class="r">${esc(registered.email)}</span></li>` : ""}
+     </ul>
+     <p class="muted small" style="margin-top:10px">Application id <code class="inline">${esc(registered.appId)}</code>. You will find it in your Control Panel as well.</p>
+     ${error ? `<p class="error banner">${esc(error)}</p>` : ""}
+     <form method="post" action="/setup" id="setup" novalidate>
+       <div class="stepblock">
+         <h2>One thing left: a password</h2>
+         <p class="muted">Your assistant signs in with it once. It is the only thing between the internet and your accounts, so make it long.</p>
+         <label for="password">Password, 12 characters or more</label>
+         <div class="pwrow"><input id="password" type="password" name="password" required minlength="12" autocomplete="new-password" autofocus><button type="button" class="ghost" id="showpw">Show</button></div>
+         <p class="hint" id="pwhint"></p>
+         <label for="password2">Repeat password</label>
+         <input id="password2" type="password" name="password2" required minlength="12" autocomplete="new-password">
+         <p class="hint" id="pw2hint"></p>
+       </div>
+       <button type="submit" id="submit" disabled>Finish setup</button>
+     </form>
+     <script>
+       const $ = (id) => document.getElementById(id);
+       const hint = (el, text, state) => { el.textContent = text; el.className = "hint" + (state ? " " + state : ""); };
+       const pw = $("password"), pw2 = $("password2");
+       const checkPw = () => {
+         const n = pw.value.length;
+         hint($("pwhint"), n === 0 ? "" : n < 12 ? (12 - n) + " more character" + (12 - n === 1 ? "" : "s") : n < 16 ? "Long enough ✓" : "Good ✓", n === 0 ? "" : n < 12 ? "err" : "ok");
+         const same = pw2.value.length > 0 && pw.value === pw2.value;
+         hint($("pw2hint"), pw2.value.length === 0 ? "" : same ? "Matches ✓" : "Does not match yet", pw2.value.length === 0 ? "" : same ? "ok" : "err");
+         $("submit").disabled = !(n >= 12 && same);
+       };
+       pw.addEventListener("input", checkPw); pw2.addEventListener("input", checkPw);
+       $("showpw").addEventListener("click", () => { const t = pw.type === "password" ? "text" : "password"; pw.type = t; pw2.type = t; $("showpw").textContent = t === "text" ? "Hide" : "Show"; });
+     </script>`,
+    { kind: "ok", pill: "Application registered" },
+  );
+}
+
+export function checkEmailPage(email: string): string {
+  return shell(
+    "Check your email",
+    `<p>Enable Banking has sent a sign-in link to <b>${esc(email)}</b>.</p>
+     <p class="muted">Open it on this device. It comes back to this server, which then creates the application and the key. The link works once and for a limited time. If nothing arrives within a few minutes, check the spam folder, then <a href="/">start again</a>.</p>
+     <p class="muted small">Nothing has been stored yet.</p>`,
+    { kind: "neutral", pill: "Waiting for the link" },
   );
 }
 

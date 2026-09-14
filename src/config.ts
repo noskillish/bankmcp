@@ -17,6 +17,7 @@ export interface Settings {
   admin_password_hash?: string;
   country?: string;
   setup_completed?: string;
+  registered_email?: string;
 }
 
 const settingsPath = join(dataDir, "settings.json");
@@ -72,6 +73,9 @@ export const config = {
   baseUrl: detectBaseUrl(),
   dataDir,
   appName: env.APP_NAME ?? "BankMCP™",
+  get registeredEmail(): string | undefined {
+    return settings.registered_email;
+  },
   get adminPasswordHash(): string {
     return env.ADMIN_PASSWORD_HASH ?? settings.admin_password_hash ?? "";
   },

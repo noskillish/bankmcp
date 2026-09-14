@@ -9,8 +9,9 @@ import { config, isConfigured, setupProblems } from "./config.ts";
 import { eb, EnableBankingError } from "./enablebanking.ts";
 import { store } from "./store.ts";
 import { SingleUserProvider } from "./auth.ts";
-import { connectedPage, failedPage, loginPage, privacyPage, returningPage, setupPage, signedInPage, welcomePage, signInFailedPage, statusPage, termsPage } from "./pages.ts";
-import { applySetup, setupAvailable } from "./setup.ts";
+import { connectedPage, failedPage, loginPage, privacyPage, returningPage, setupPage, signedInPage, welcomePage, checkEmailPage, signInFailedPage, statusPage, termsPage } from "./pages.ts";
+import { applyPassword, applySetup, setupAvailable } from "./setup.ts";
+import { finishRegistration, registeredButUnfinished, startRegistration } from "./register.ts";
 import { createServer, VERSION } from "./mcp.ts";
 import { startWatcher } from "./watcher.ts";
 
@@ -86,7 +87,7 @@ export function createApp(opts: AppOptions) {
   const setupCsp = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
 
   app.get("/", async (req, res) => {
-    if (setupAvailable()) return void res.set("Content-Security-Policy", setupCsp).type("html").send(setupPage({ baseUrl: config.baseUrl }));
+    if (setupAvailable()) return void res.set("Content-Security-Policy", setupCsp).type("html").send(setupPage({ baseUrl: config.baseUrl, registered: registeredButUnfinished() ?? undefined }));
     const problems = setupProblems();
     if ("welcome" in req.query && !problems.length) {
       // Right after setup: what was checked, and the two things to do next.
@@ -96,11 +97,35 @@ export function createApp(opts: AppOptions) {
     res.set("Content-Security-Policy", setupCsp).type("html").send(statusPage({ problems, mcpUrl: mcpUrl.href, callbackUrl }));
   });
 
+  // "Register for me": Enable Banking mails the sign-in link; the link returns to /setup/complete.
+  app.post("/setup/register", express.urlencoded({ extended: false, limit: "16kb" }), async (req, res) => {
+    if (!setupAvailable()) return void res.status(404).type("html").send(failedPage("Setup is already complete."));
+    const body = req.body as Record<string, string | undefined>;
+    const result = await startRegistration(body, config.baseUrl);
+    if ("error" in result) return void res.status(400).set("Content-Security-Policy", setupCsp).type("html").send(setupPage({ error: result.error, values: { email: body.email, country: body.country }, baseUrl: config.baseUrl }));
+    log(`registration: sign-in link requested for ${result.email.replace(/^(.).*(@.*)$/, "$1…$2")}`);
+    res.type("html").send(checkEmailPage(result.email));
+  });
+
+  app.get("/setup/complete", async (req, res) => {
+    if (!setupAvailable()) return void res.status(404).type("html").send(failedPage("Setup is already complete."));
+    const q = req.query as Record<string, string | undefined>;
+    const result = await finishRegistration({ state: q.state, oobCode: q.oobCode }, config.baseUrl);
+    if ("error" in result) return void res.status(400).set("Content-Security-Policy", setupCsp).type("html").send(setupPage({ error: result.error, baseUrl: config.baseUrl }));
+    log(`registration: application ${result.appId} created (${result.environment})`);
+    if (config.localMode) {
+      startWatcherOnce();
+      return void res.redirect(303, "/?welcome");
+    }
+    res.redirect(303, "/");
+  });
+
   app.post("/setup", express.urlencoded({ extended: false, limit: "64kb" }), async (req, res) => {
     if (!setupAvailable()) return void res.status(404).type("html").send(failedPage("Setup is already complete."));
     const body = req.body as Record<string, string | undefined>;
-    const error = await applySetup(body);
-    if (error) return void res.status(400).set("Content-Security-Policy", setupCsp).type("html").send(setupPage({ error, values: { app_id: body.app_id, country: body.country }, baseUrl: config.baseUrl }));
+    const registered = registeredButUnfinished();
+    const error = registered && !body.app_id ? applyPassword(body) : await applySetup(body);
+    if (error) return void res.status(400).set("Content-Security-Policy", setupCsp).type("html").send(setupPage({ error, values: { app_id: body.app_id, country: body.country }, baseUrl: config.baseUrl, registered: registered ?? undefined }));
     log("setup completed via the setup page");
     if (opts.remote) rememberPasswordFingerprint();
     startWatcherOnce();
