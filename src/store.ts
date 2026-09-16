@@ -56,6 +56,7 @@ export interface Watch {
   account: string;
   rule: WatchRule;
   note?: string;
+  /** Written by versions before 0.1.14 and ignored since: notifications only go to NOTIFY_WEBHOOK_URL. */
   webhook_url?: string;
   created: string;
   active: boolean;

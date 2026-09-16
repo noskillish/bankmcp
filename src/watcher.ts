@@ -64,9 +64,10 @@ export async function runWatches(opts: { force?: boolean } = {}): Promise<WatchR
     s.update((d) => void (d.accounts[uid]!.last_polled = new Date().toISOString()));
   }
 
+  // Notifications go to the one destination the operator configured on the host. A watch cannot
+  // name its own (a client could otherwise send transaction data anywhere, including inside the network).
   for (const e of run.events) {
-    const watch = s.data.watches[e.watch_id];
-    const url = watch?.webhook_url || config.notifyWebhookUrl;
+    const url = config.notifyWebhookUrl;
     if (url) await notify(url, e).catch((err) => run.errors.push(`notify: ${(err as Error).message}`));
   }
   return run;
@@ -153,6 +154,7 @@ async function checkAccount(account: StoredAccount, watches: Watch[]): Promise<W
 }
 
 async function notify(url: string, event: WatchEvent): Promise<void> {
+  if (!/^https:\/\//.test(url)) throw new Error("NOTIFY_WEBHOOK_URL must be an https URL");
   const slack = /hooks\.slack\.com/.test(url);
   const body = slack ? { text: event.text } : { source: "bank-mcp", ...event };
   const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });

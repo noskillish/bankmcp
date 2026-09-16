@@ -282,6 +282,19 @@ bank either way; that part is regulated and unavoidable.
   (`ALLOWED_REDIRECT_HOSTS`), which stops a phishing link from routing your sign-in to
   another site. Using a client not on the list? Add its domain. The sign-in page also names the host you will
   be sent back to.
+- Notifications go to one destination only: the `NOTIFY_WEBHOOK_URL` the
+  operator sets on the host, and it must be https. A watch cannot name its own
+  webhook, so a client or an assistant that has been talked into it cannot
+  point transaction data at another address or at something inside the
+  server's network.
+- Where the checks are, for anyone reading the code: every `/mcp` request
+  passes `requireBearerAuth` in `src/app.ts` before any tool runs; tokens are
+  issued and verified by `SingleUserProvider` in `src/auth.ts`, after the
+  password check in `completeLogin`. There is one user, so a valid token is the
+  whole authorisation and the tools carry no further per-user checks. In local
+  mode (`npx bankmcp`) there is no OAuth: the client on your machine talks to
+  the server over stdio, and whoever can run processes on that machine can use
+  it.
 - Anyone with the admin password can read your accounts. Use a long one.
   Every successful sign-in is logged and, if `NOTIFY_WEBHOOK_URL` is set,
   sent to you as a message. A sign-in you did not make is your alarm.
