@@ -149,8 +149,10 @@ Choose a password of twelve characters or more. A *Ready* page then shows
 what was checked: the application, whether its redirect URL is registered and
 whether it is active, and the connector address to copy.
 
-Prefer configuration by environment? Set these and the setup page does not
-appear:
+Prefer configuration by environment? Set the variables listed in
+[.env.example](.env.example) and the setup page does not appear. Optional:
+`NOTIFY_WEBHOOK_URL` for watch notifications and sign-in alerts (a Slack
+incoming webhook works).
 
 #### 4. Add the connector in your assistant
 
