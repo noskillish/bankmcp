@@ -91,7 +91,8 @@ from the tagged source, `linux/amd64` and `linux/arm64`).
 
 **Railway:** [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new/template/bankmcp?utm_medium=integration&utm_source=button&utm_campaign=bankmcp)
 deploys the published image with a volume at `/data` and a domain, nothing
-to fill in. Or by hand: New Project, Deploy from GitHub repo, pick this
+to fill in. Railway bills you for the server and shares part of its revenue
+with the template's author; you pay nothing to us. Or by hand: New Project, Deploy from GitHub repo, pick this
 repo, add a volume mounted at `/data` and generate a domain (Settings,
 Networking, port 8080). The server learns its own address from Railway.
 
