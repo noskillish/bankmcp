@@ -6,11 +6,37 @@ import { eb, EnableBankingError } from "./enablebanking.ts";
 import { pendingAuthIsLive, store, type StoredAccount, type WatchRule } from "./store.ts";
 import { daysAgo, daysLeft, describeAccount, isoDate, simplifyBalances, simplifyTransactions } from "./data.ts";
 import { runWatches } from "./watcher.ts";
+import {
+  ATTESTATION_TTL_SECONDS,
+  ATTESTATION_VERSION,
+  attestationEnabled,
+  attestationRateLimitMessage,
+  holderNameAllowed,
+  maxAttestableBalance,
+  normalizeIban,
+  signAttestation,
+  takeAttestationSlot,
+  type Attestation,
+  type AttestationClaims,
+} from "./attestation.ts";
 
 const MAX_CONSENT_DAYS = 180;
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }] });
 const fail = (message: string) => ({ content: [{ type: "text" as const, text: message }], isError: true });
+
+/**
+ * An attestation as a tool result. Every other tool here answers an assistant,
+ * which reads the text; this one answers a verifier, which parses the object
+ * and checks a signature over exactly these fields. So it is the one tool that
+ * declares an outputSchema, and it must carry `structuredContent` to match —
+ * the text copy stays so that a client which ignores structured output still
+ * sees the same answer rather than an empty result.
+ */
+const attested = (attestation: Attestation) => ({
+  content: [{ type: "text" as const, text: JSON.stringify(attestation, null, 2) }],
+  structuredContent: attestation as unknown as Record<string, unknown>,
+});
 
 class ToolError extends Error {}
 
@@ -301,6 +327,121 @@ export function registerTools(server: McpServer): void {
       ),
     ),
   );
+
+  // --- Attestation ---
+
+  // Registered only when the owner turned it on. A tool that is absent is a
+  // clearer answer than one that always refuses, and it keeps the default
+  // tool list of this server exactly what it has always been.
+  if (attestationEnabled()) {
+    const ceiling = maxAttestableBalance();
+    server.registerTool(
+      "attest_account",
+      {
+        title: "Attest an account",
+        description:
+          "Answer, in a signed object a third party can verify, whether an IBAN belongs to one of the connected accounts" +
+          (ceiling === undefined ? "" : ` and whether it holds at least a given amount (up to ${ceiling})`) +
+          ". Returns no balance, no transactions and no account list: a yes/no, the currency, and a signature. " +
+          "Intended for a service the owner is proving an account to, such as a payment authorizer verifying a funding source. " +
+          "The public key is at /.well-known/bankmcp-attestation.",
+        inputSchema: {
+          iban: z.string().min(5).describe("The IBAN to ask about"),
+          nonce: z.string().min(8).max(128).describe("A value from the caller, echoed into the signed claims so the answer cannot be replayed"),
+          ...(ceiling === undefined
+            ? {}
+            : {
+                min_balance: z
+                  .number()
+                  .positive()
+                  .optional()
+                  .describe(`Ask whether the account holds at least this much. At most ${ceiling}.`),
+              }),
+        },
+        // The one tool here whose reader is a program rather than an assistant.
+        // A verifier rebuilds the signed bytes from these fields in this order,
+        // so the shape is already a fixed contract — declaring it lets a client
+        // check it reached the end intact instead of discovering a missing
+        // field when the signature fails. Mirrors AttestationClaims in
+        // attestation.ts; the two must stay in step.
+        outputSchema: {
+          claims: z
+            .object({
+              v: z.literal(ATTESTATION_VERSION).describe("Attestation format; a verifier rejects what it does not know"),
+              iban: z.string().describe("The IBAN that was asked about, without spaces and upper-cased"),
+              owned: z.boolean().describe("True when that IBAN belongs to an account this server has a live consent for"),
+              holder_name: z.string().nullable().describe("Name on the account, or null when the owner withholds it"),
+              currency: z.string().nullable().describe("Currency of the account, or null when it is not owned"),
+              sufficient: z.boolean().nullable().describe("Answer to the min_balance question, or null when none was asked"),
+              min_balance: z.number().nullable().describe("The threshold `sufficient` answers, echoed so the claim cannot be reused for another"),
+              nonce: z.string().describe("The caller's value, echoed back to bind this answer to one request"),
+              issued_at: z.number().int().describe("Seconds since the epoch when this was signed"),
+              expires_at: z.number().int().describe(`Seconds since the epoch when it goes stale, ${ATTESTATION_TTL_SECONDS} seconds after issue`),
+              issuer: z.string().describe("Base URL of the server that said it, and where its public key is published"),
+            })
+            .describe("Exactly the fields the signature covers, in the order they are signed in"),
+          signature: z.string().describe("Ed25519 over the canonical JSON of `claims`, base64url"),
+          key_id: z.string().describe("Which key signed it, to match against /.well-known/bankmcp-attestation"),
+        },
+      },
+      guard(async ({ iban, nonce, min_balance }: { iban: string; nonce: string; min_balance?: number }) => {
+        // Before anything is looked up or asked of the bank. The ceiling above
+        // bounds what one answer reveals; this bounds how many answers a caller
+        // gets, and the two only work together — a caller free to ask "at least
+        // X?" as often as it likes can still binary-search the balance out of
+        // the range the ceiling leaves open. Counted here rather than per IBAN
+        // so that walking a list of guesses costs the same as repeating one.
+        if (!takeAttestationSlot()) throw new ToolError(attestationRateLimitMessage());
+
+        // Before the account is looked up, because the answer does not depend on it: asked
+        // after, an over-ceiling threshold would error for an owned IBAN and return a signed
+        // "no" for an unowned one, which tells the caller which it asked about.
+        if (min_balance !== undefined && ceiling !== undefined && min_balance > ceiling) {
+          throw new ToolError(`min_balance is above the limit the owner set for this server (${ceiling}).`);
+        }
+
+        const wanted = normalizeIban(iban);
+        const account = store()
+          .accounts()
+          .find((a) => a.iban && normalizeIban(a.iban) === wanted);
+
+        const issuedAt = Math.floor(Date.now() / 1000);
+        const base = {
+          v: ATTESTATION_VERSION,
+          iban: wanted,
+          nonce,
+          issued_at: issuedAt,
+          expires_at: issuedAt + ATTESTATION_TTL_SECONDS,
+          issuer: config.baseUrl,
+        } as const;
+
+        // Not ours: say so, signed. A signed "no" is worth as much to the caller as a signed "yes",
+        // and it reveals nothing — the caller already knew the IBAN it asked about.
+        if (!account) {
+          const claims: AttestationClaims = { ...base, owned: false, holder_name: null, currency: null, sufficient: null, min_balance: null };
+          return attested(signAttestation(claims));
+        }
+
+        let sufficient: boolean | null = null;
+        if (min_balance !== undefined) {
+          // One balance read, the same call get_balances makes. Only the comparison leaves this function.
+          const balances = await withAccount(account.uid, async (a) => simplifyBalances(await eb.getBalances(a.uid)));
+          if (balances.booked === undefined) throw new ToolError("The bank did not report a booked balance for this account, so no threshold can be attested.");
+          sufficient = balances.booked >= min_balance;
+        }
+
+        const claims: AttestationClaims = {
+          ...base,
+          owned: true,
+          holder_name: holderNameAllowed() ? (account.name ?? null) : null,
+          currency: account.currency,
+          sufficient,
+          min_balance: min_balance ?? null,
+        };
+        return attested(signAttestation(claims));
+      }),
+    );
+  }
 
   // --- Watches ---
 

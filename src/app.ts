@@ -14,6 +14,7 @@ import { applyPassword, applySetup, setupAvailable } from "./setup.ts";
 import { finishRegistration, pendingEmail, registeredButUnfinished, startRegistration } from "./register.ts";
 import { createServer, VERSION } from "./mcp.ts";
 import { startWatcher } from "./watcher.ts";
+import { attestationEnabled, publicKeyDocument } from "./attestation.ts";
 
 export interface AppOptions {
   /** Mount the OAuth server and the /mcp endpoint. Off in local (stdio) mode. */
@@ -148,6 +149,15 @@ export function createApp(opts: AppOptions) {
   // Readable from any origin: the Get started page on the website polls it from the visitor's browser
   // to tell when their own server is up. It carries no data beyond "running" and "configured".
   app.get("/healthz", (_req, res) => void res.set("Access-Control-Allow-Origin", "*").json({ ok: true, version: VERSION, configured: isConfigured() }));
+
+  // The public half of the attestation key. Readable from any origin and without
+  // a token: it only lets someone check a signature this server made, and a
+  // verifier that cannot fetch it cannot verify anything. Absent when
+  // attestations are off, so the feature is not advertised where it is not on.
+  app.get("/.well-known/bankmcp-attestation", (_req, res) => {
+    if (!attestationEnabled()) return void res.status(404).json({ error: "This server does not issue attestations." });
+    res.set("Access-Control-Allow-Origin", "*").set("Cache-Control", "public, max-age=300").json(publicKeyDocument());
+  });
 
   app.get("/privacy", (_req, res) => void res.type("html").send(privacyPage()));
   app.get("/terms", (_req, res) => void res.type("html").send(termsPage()));

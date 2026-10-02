@@ -210,6 +210,7 @@ service to others. This project does not change those terms.
 | `get_balances` | booked and available balance for one account |
 | `get_transactions` | signed amounts, one counterparty, one description; paginated |
 | `create_watch`, `list_watches`, `delete_watch`, `check_watches` | background rules with webhook notifications |
+| `attest_account` | **off by default**; a signed yes/no that an IBAN is yours, for a third party you are proving an account to — see [ATTESTATION.md](ATTESTATION.md) |
 
 **Prompts**: `connect-bank`, `monthly-summary`, `build-budget`,
 `savings-scan`, `subscription-audit`, `unusual-transactions`.
@@ -368,6 +369,13 @@ The authors publish the code and nothing else. They do not run any instance
 for others, receive no data, and are not affiliated with Enable Banking,
 Anthropic or any bank. BankMCP™ is not a bank, does not hold money, and gives no
 financial advice.
+
+Attestations (`ATTESTATION_ENABLED`, off by default) do not change any of
+this. They add no payment initiation and widen no consent: the bank calls
+underneath are the same balance reads `get_balances` already makes, and a
+third party who asks learns a yes or a no about one IBAN they already knew.
+Whether sharing that with a particular service suits your Enable Banking
+terms is your decision as the operator, as everything else here is.
 
 **Use at your own risk.** If you deploy it, you own that deployment and its
 security. The software is provided as is, without warranty of any kind, and
