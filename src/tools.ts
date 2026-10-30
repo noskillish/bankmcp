@@ -33,6 +33,13 @@ import {
 } from "./attestation.ts";
 
 const MAX_CONSENT_DAYS = 180;
+/**
+ * The most account references one call may carry. The server has one owner and a
+ * consent lists their own accounts, so 100 is far above any real library; it is a
+ * ceiling on the work a single call can ask for, not a product limit. It is also the
+ * array bound the element cap in mcp.ts is sized from, so the two must move together.
+ */
+const MAX_ACCOUNT_REFS = 100;
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }] });
 const fail = (message: string) => ({ content: [{ type: "text" as const, text: message }], isError: true });
@@ -519,7 +526,7 @@ export function registerTools(server: McpServer, opts: { attestOnly?: boolean } 
         "Defaults to the last 90 days. `checked` lists each account and date range searched; one with `complete: false` was not fully read.",
       inputSchema: {
         query: z.string().min(1).describe("Merchant name, invoice number or other text to look for"),
-        accounts: z.array(z.string()).optional().describe("Account uids or labels; default all"),
+        accounts: z.array(z.string()).max(MAX_ACCOUNT_REFS).optional().describe("Account uids or labels; default all (at most 100)"),
         from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("YYYY-MM-DD, default 90 days ago"),
         to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("YYYY-MM-DD, default today"),
       },
@@ -547,7 +554,7 @@ export function registerTools(server: McpServer, opts: { attestOnly?: boolean } 
         "a transaction counts as a transfer when its counterparty account is a connected account, or when another connected account has the opposite amount within two days. " +
         "Card purchases and refunds stay in. Defaults to the last 90 days; whole months give clean totals. `checked` lists each account and date range read.",
       inputSchema: {
-        accounts: z.array(z.string()).optional().describe("Account uids or labels; default all"),
+        accounts: z.array(z.string()).max(MAX_ACCOUNT_REFS).optional().describe("Account uids or labels; default all (at most 100)"),
         from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("YYYY-MM-DD, default 90 days ago"),
         to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("YYYY-MM-DD, default today"),
       },
