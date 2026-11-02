@@ -15,6 +15,8 @@ import { finishRegistration, pendingEmail, registeredButUnfinished, startRegistr
 import { createServer, VERSION } from "./mcp.ts";
 import { startWatcher } from "./watcher.ts";
 import { attestationEnabled, publicKeyDocument } from "./attestation.ts";
+import { addBudgetRule, addManualMovement, BudgetAuth, classifyMovement, getBudgetSummary, updateBudgetSettings } from "./budget.ts";
+import { budgetIcon, budgetLoginPage, budgetManifest, budgetPage, budgetServiceWorker } from "./budget-pages.ts";
 
 export interface AppOptions {
   /** Mount the OAuth server and the /mcp endpoint. Off in local (stdio) mode. */
@@ -39,6 +41,7 @@ export function createApp(opts: AppOptions) {
 
   const baseUrl = new URL(config.baseUrl);
   const mcpUrl = new URL("/mcp", baseUrl);
+  const budgetAuth = new BudgetAuth();
   const provider = new SingleUserProvider(store(), {
     onLogin: (e) => {
       const who = e.clientName ? ` for ${e.clientName}` : "";
@@ -86,6 +89,18 @@ export function createApp(opts: AppOptions) {
   const callbackUrl = new URL("/callback", baseUrl).href;
   // The setup page reads the chosen key file in the browser, which needs one inline script.
   const setupCsp = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
+  const budgetCsp = `${setupCsp}; worker-src 'self'; connect-src 'self'`;
+  const budgetCookie = "budget_session";
+  const cookie = (req: express.Request): string | undefined => req.headers.cookie?.split(";").map((v) => v.trim()).find((v) => v.startsWith(`${budgetCookie}=`))?.slice(budgetCookie.length + 1);
+  const budgetAccess = (req: express.Request): boolean => !opts.remote || config.localMode || budgetAuth.valid(cookie(req));
+  const requireBudgetAccess = (req: express.Request, res: express.Response): boolean => {
+    if (budgetAccess(req)) return true;
+    res.status(401).json({ error: "Necesitas iniciar sesión en el presupuesto." });
+    return false;
+  };
+  const setBudgetCookie = (res: express.Response, value: string, maxAge = 12 * 60 * 60): void => {
+    res.setHeader("Set-Cookie", `${budgetCookie}=${value}; Max-Age=${maxAge}; Path=/budget; HttpOnly; SameSite=Strict${baseUrl.protocol === "https:" ? "; Secure" : ""}`);
+  };
 
   app.get("/", async (req, res) => {
     if (setupAvailable()) return void res.set("Content-Security-Policy", setupCsp).type("html").send(setupPage({ baseUrl: config.baseUrl, registered: registeredButUnfinished() ?? undefined }));
@@ -149,6 +164,77 @@ export function createApp(opts: AppOptions) {
   // Readable from any origin: the Get started page on the website polls it from the visitor's browser
   // to tell when their own server is up. It carries no data beyond "running" and "configured".
   app.get("/healthz", (_req, res) => void res.set("Access-Control-Allow-Origin", "*").json({ ok: true, version: VERSION, configured: isConfigured() }));
+
+  // --- Personal budget web app ---
+
+  app.get("/budget/manifest.webmanifest", (_req, res) => void res.type("application/manifest+json").send(budgetManifest()));
+  app.get("/budget/sw.js", (_req, res) => void res.type("application/javascript").set("Cache-Control", "no-store").send(budgetServiceWorker));
+  app.get("/budget/icon.svg", (_req, res) => void res.type("image/svg+xml").send(budgetIcon));
+  app.get("/budget", async (req, res) => {
+    if (isConfigured() && !budgetAccess(req)) return void res.set("Content-Security-Policy", budgetCsp).type("html").send(budgetLoginPage());
+    const initial = isConfigured() ? await getBudgetSummary().catch(() => undefined) : undefined;
+    res.set("Cache-Control", "no-store").set("Content-Security-Policy", budgetCsp).type("html").send(budgetPage(initial));
+  });
+  app.post("/budget/login", express.urlencoded({ extended: false, limit: "8kb" }), (req, res) => {
+    if (!isConfigured()) return void res.redirect(303, "/budget");
+    const token = budgetAuth.login(String((req.body as Record<string, unknown>).password ?? ""), req.ip ?? "unknown");
+    if (!token) return void res.status(401).set("Content-Security-Policy", budgetCsp).type("html").send(budgetLoginPage("Contraseña incorrecta o demasiados intentos. Espera unos minutos e inténtalo de nuevo."));
+    setBudgetCookie(res, token);
+    res.redirect(303, "/budget");
+  });
+  app.post("/budget/logout", (req, res) => {
+    budgetAuth.logout(cookie(req));
+    setBudgetCookie(res, "", 0);
+    res.redirect(303, "/budget");
+  });
+  app.get("/budget/api/summary", async (req, res) => {
+    if (isConfigured() && !requireBudgetAccess(req, res)) return;
+    try {
+      res.set("Cache-Control", "no-store").json(await getBudgetSummary());
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+  app.post("/budget/api/settings", express.json({ limit: "16kb" }), (req, res) => {
+    if (!requireBudgetAccess(req, res)) return;
+    try {
+      const body = req.body as Record<string, unknown>;
+      updateBudgetSettings({ payroll_day: Number(body.payroll_day), monthly_income: Number(body.monthly_income), needs: Number(body.needs), leisure: Number(body.leisure), savings: Number(body.savings) });
+      res.json({ ok: true });
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  });
+  app.post("/budget/api/manual", express.json({ limit: "16kb" }), (req, res) => {
+    if (!requireBudgetAccess(req, res)) return;
+    try {
+      const body = req.body as Record<string, unknown>;
+      const id = addManualMovement({ date: String(body.date ?? ""), amount: Number(body.amount), currency: body.currency ? String(body.currency) : undefined, description: String(body.description ?? ""), block: body.block as never, category: body.category as never, planned: body.planned === true, status: body.status === "pending" ? "pending" : "confirmed" });
+      res.status(201).json({ ok: true, id });
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  });
+  app.post("/budget/api/rules", express.json({ limit: "16kb" }), (req, res) => {
+    if (!requireBudgetAccess(req, res)) return;
+    try {
+      const body = req.body as Record<string, unknown>;
+      const id = addBudgetRule({ contains: String(body.contains ?? ""), label: String(body.label ?? ""), block: body.block as never, category: body.category as never, planned: body.planned !== false });
+      res.status(201).json({ ok: true, id });
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  });
+  app.post("/budget/api/movements/:id/classify", express.json({ limit: "8kb" }), (req, res) => {
+    if (!requireBudgetAccess(req, res)) return;
+    try {
+      const body = req.body as Record<string, unknown>;
+      classifyMovement(req.params.id, { block: body.block as never, category: body.category as never, planned: body.planned === true });
+      res.json({ ok: true });
+    } catch (error) {
+      res.status(400).json({ error: (error as Error).message });
+    }
+  });
 
   // The public half of the attestation key. Readable from any origin and without
   // a token: it only lets someone check a signature this server made, and a

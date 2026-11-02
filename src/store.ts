@@ -4,6 +4,7 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { config } from "./config.ts";
+import { defaultBudgetState, type BudgetState } from "./budget-types.ts";
 
 export interface StoredSession {
   id: string;
@@ -112,6 +113,8 @@ export interface StoreData {
     /** Fingerprint of the admin password the tokens were issued under. */
     password_fingerprint?: string;
   };
+  /** Personal budget preferences and manual entries. Bank movements are never cached here. */
+  budget?: BudgetState;
 }
 
 const empty = (): StoreData => ({
@@ -121,6 +124,7 @@ const empty = (): StoreData => ({
   pending_auth: {},
   watches: {},
   oauth: { clients: {}, codes: {}, tokens: {} },
+  budget: defaultBudgetState(),
 });
 
 export class Store {
@@ -137,7 +141,20 @@ export class Store {
     }
     if (existsSync(path)) {
       const parsed = JSON.parse(readFileSync(path, "utf8")) as Partial<StoreData>;
-      this.data = { ...empty(), ...parsed, oauth: { ...empty().oauth, ...(parsed.oauth ?? {}) } };
+      const fresh = empty();
+      this.data = {
+        ...fresh,
+        ...parsed,
+        oauth: { ...fresh.oauth, ...(parsed.oauth ?? {}) },
+        budget: {
+          ...fresh.budget!,
+          ...(parsed.budget ?? {}),
+          budgets: { ...fresh.budget!.budgets, ...(parsed.budget?.budgets ?? {}) },
+          rules: Array.isArray(parsed.budget?.rules) ? parsed.budget!.rules : fresh.budget!.rules,
+          manual_movements: Array.isArray(parsed.budget?.manual_movements) ? parsed.budget!.manual_movements : fresh.budget!.manual_movements,
+          overrides: parsed.budget?.overrides && typeof parsed.budget.overrides === "object" ? parsed.budget.overrides : fresh.budget!.overrides,
+        },
+      };
     }
   }
 
@@ -210,6 +227,11 @@ export class Store {
 
   accounts(): StoredAccount[] {
     return Object.values(this.data.accounts);
+  }
+
+  budget(): BudgetState {
+    if (!this.data.budget) this.data.budget = defaultBudgetState();
+    return this.data.budget;
   }
 
   account(uid: string): StoredAccount | undefined {
