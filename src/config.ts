@@ -105,6 +105,12 @@ export const config = {
   // Unattended polling for watches: PSD2 allows at most four account accesses
   // per day without the account holder present.
   pollIntervalHours: Number(env.POLL_INTERVAL_HOURS ?? 6),
+  // Bank calls (balances, transaction fetches) allowed per account in any 24 hours, counted by this server so a
+  // chatty client stops before the bank answers 429. 0 turns the budget off. Unattended access is often limited
+  // to 4 a day per account by PSD2; the watcher's polls are not counted here.
+  bankDailyCallLimit: Math.max(0, Number(env.BANK_DAILY_CALL_LIMIT ?? 4)),
+  // How long an identical read is answered from memory without asking the bank again.
+  bankCacheTtlMinutes: Math.max(0, Number(env.BANK_CACHE_TTL_MINUTES ?? 15)),
   /** True when every secret came from the environment, so the setup page has nothing to do. */
   get lockedByEnv(): boolean {
     return Boolean(env.EB_APP_ID && (env.EB_PRIVATE_KEY || env.EB_PRIVATE_KEY_PATH) && (localMode || env.ADMIN_PASSWORD_HASH || env.ADMIN_PASSWORD));

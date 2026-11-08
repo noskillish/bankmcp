@@ -83,21 +83,50 @@ export interface Application {
   active: boolean;
 }
 
+/** Enable Banking error codes that mean the bank consent behind a session can no longer be used. */
+const CONSENT_GONE_CODES = new Set(["EXPIRED_SESSION", "CLOSED_SESSION", "REVOKED_SESSION", "SESSION_DOES_NOT_EXIST"]);
+
 export class EnableBankingError extends Error {
   status: number;
   body: string;
-  constructor(status: number, body: string) {
+  /** The `error` field of Enable Banking's error response, e.g. ASPSP_RATE_LIMIT_EXCEEDED. */
+  errorCode?: string;
+  /** Seconds from a Retry-After header, when the response had one. */
+  retryAfterSeconds?: number;
+  constructor(status: number, body: string, retryAfter?: string | null) {
     super(`Enable Banking API ${status}: ${body}`);
     this.status = status;
     this.body = body;
+    try {
+      const parsed = JSON.parse(body) as { error?: unknown };
+      if (typeof parsed?.error === "string") this.errorCode = parsed.error;
+    } catch {
+      // not JSON: no code
+    }
+    const seconds = Number(retryAfter);
+    if (retryAfter && Number.isFinite(seconds) && seconds >= 0) this.retryAfterSeconds = seconds;
   }
   /** True when Enable Banking refuses because the application has not been activated yet. */
   get applicationInactive(): boolean {
     return this.status === 403 && /not active/i.test(this.body);
   }
-  /** True when the bank consent behind this call is no longer usable. */
+  /** True when the bank (or Enable Banking on its behalf) refuses because too many requests were made. */
+  get rateLimited(): boolean {
+    return this.status === 429 || this.errorCode === "ASPSP_RATE_LIMIT_EXCEEDED";
+  }
+  /**
+   * True when the bank consent behind this call is no longer usable. Decided by Enable Banking's error code,
+   * never by words in the message: a bank's rate-limit text can say "consent" while the consent is fine.
+   * Without a code, only 401 and 410 count.
+   */
   get consentGone(): boolean {
-    return this.status === 401 || this.status === 403 || this.status === 410 || /session|consent|expired|revoked/i.test(this.body);
+    if (this.rateLimited) return false;
+    if (this.errorCode) return CONSENT_GONE_CODES.has(this.errorCode);
+    return this.status === 401 || this.status === 410;
+  }
+  /** Status and code only, safe to log: the body's `detail` can carry the bank's own text. */
+  get summary(): string {
+    return `${this.status}${this.errorCode ? ` ${this.errorCode}` : ""}`;
   }
 }
 
@@ -143,7 +172,7 @@ async function api<T>(method: string, path: string, body?: unknown, query?: Reco
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
-  if (!res.ok) throw new EnableBankingError(res.status, text);
+  if (!res.ok) throw new EnableBankingError(res.status, text, res.headers.get("retry-after"));
   return (text ? JSON.parse(text) : {}) as T;
 }
 

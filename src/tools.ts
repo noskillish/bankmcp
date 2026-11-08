@@ -31,6 +31,7 @@ import {
   type Attestation,
   type AttestationClaims,
 } from "./attestation.ts";
+import { BankGuard, BankReadError, type GuardedRead } from "./bankguard.ts";
 
 const MAX_CONSENT_DAYS = 180;
 
@@ -66,21 +67,28 @@ export function resolveAccount(ref: string): StoredAccount {
   throw new ToolError(`No account "${ref}". Call list_accounts for the uids and labels.`);
 }
 
-/** Runs a bank call and turns an expired consent into a clear next step. */
-async function withAccount<T>(ref: string, fn: (a: StoredAccount) => Promise<T>): Promise<T> {
+const bankGuard = new BankGuard({
+  store,
+  now: () => Date.now(),
+  log: (msg) => console.log(`[bank ${new Date().toISOString()}] ${msg}`),
+  sessionStatus: async (id) => (await eb.getSession(id)).status,
+  dailyLimit: config.bankDailyCallLimit,
+  cacheTtlMs: config.bankCacheTtlMinutes * 60_000,
+  staleMaxMs: 24 * 3600_000,
+  cooldownMs: 6 * 3600_000,
+});
+
+/** Cache and staleness fields added to an answer that came from the guard. */
+const freshness = (r: GuardedRead<unknown>) => ({
+  ...(r.cached_at ? { cached_at: r.cached_at } : {}),
+  ...(r.stale ? { stale: true } : {}),
+  ...(r.note ? { note: r.note } : {}),
+});
+
+/** Runs a bank read for one account through the cache, budget and rate-limit guard. */
+async function withAccount<T>(ref: string, key: string, fn: (a: StoredAccount) => Promise<T>, options: { live?: boolean } = {}): Promise<GuardedRead<T> & { account: StoredAccount }> {
   const account = resolveAccount(ref);
-  try {
-    return await fn(account);
-  } catch (err) {
-    if (err instanceof EnableBankingError && err.consentGone) {
-      const session = store().data.sessions[account.session_id];
-      if (session) store().update((d) => void (d.sessions[session.id]!.status = "EXPIRED"));
-      throw new ToolError(
-        `The bank consent for ${session?.bank.name ?? "this account"} is no longer valid (${err.status}). Run start_consent for that bank again; the account keeps its label and watches.`,
-      );
-    }
-    throw err;
-  }
+  return { ...(await bankGuard.read(account, key, () => fn(account), options)), account };
 }
 
 /** Pages fetched per account by the tools that read across accounts. */
@@ -95,6 +103,10 @@ interface Checked {
   /** False when the page cap stopped the fetch, or the account could not be read. */
   complete: boolean;
   error?: string;
+  /** Set when the transactions came from the in-memory cache. */
+  cached_at?: string;
+  stale?: boolean;
+  note?: string;
 }
 
 /**
@@ -109,7 +121,7 @@ async function fetchAcross(refs: string[] | undefined, from: string, to: string)
   for (const account of accounts) {
     const name = account.label ?? account.name ?? account.uid;
     try {
-      const { fetched, complete } = await withAccount(account.uid, async (a) => {
+      const read = await withAccount(account.uid, `transactions|${from}|${to}|all`, async (a) => {
         const fetched = [];
         let key: string | undefined;
         let pages = 0;
@@ -121,11 +133,12 @@ async function fetchAcross(refs: string[] | undefined, from: string, to: string)
         } while (key && pages < MAX_PAGES_PER_ACCOUNT);
         return { fetched, complete: !key };
       });
+      const { fetched, complete } = read.value;
       const simple = simplifyTransactions(fetched);
       transactions.push(...simple.map((t) => ({ ...t, account_uid: account.uid })));
-      checked.push({ account: name, uid: account.uid, from, to, transactions: simple.length, complete });
+      checked.push({ account: name, uid: account.uid, from, to, transactions: simple.length, complete, ...freshness(read) });
     } catch (err) {
-      if (!(err instanceof ToolError)) throw err;
+      if (!(err instanceof ToolError || err instanceof BankReadError)) throw err;
       checked.push({ account: name, uid: account.uid, from, to, transactions: 0, complete: false, error: err.message });
     }
   }
@@ -143,7 +156,7 @@ function guard<A extends unknown[]>(fn: (...args: A) => Promise<ReturnType<typeo
       }
       return await fn(...args);
     } catch (err) {
-      if (err instanceof ToolError) return fail(err.message);
+      if (err instanceof ToolError || err instanceof BankReadError) return fail(err.message);
       if (err instanceof EnableBankingError && err.applicationInactive) {
         return fail(
           "The Enable Banking application behind this server is not active yet, so no bank can be reached. This is a one-time step the owner does in their browser, not something to retry here. Tell them exactly this: " +
@@ -255,7 +268,8 @@ function registerAttestation(server: McpServer): void {
       let sufficient: boolean | null = null;
       if (min_balance !== undefined) {
         // One balance read, the same call get_balances makes. Only the comparison leaves this function.
-        const balances = await withAccount(account.uid, async (a) => simplifyBalances(await eb.getBalances(a.uid)));
+        // Live read: a signed statement must never rest on a cached balance.
+        const balances = (await withAccount(account.uid, "balances", async (a) => simplifyBalances(await eb.getBalances(a.uid)), { live: true })).value;
         if (balances.booked === undefined) throw new ToolError("The bank did not report a booked balance for this account, so no threshold can be attested.");
         sufficient = balances.booked >= min_balance;
       }
@@ -415,10 +429,10 @@ export function registerTools(server: McpServer, opts: { attestOnly?: boolean } 
           continue;
         }
         try {
-          const b = simplifyBalances(await eb.getBalances(a.uid));
-          out.push({ ...base, booked: b.booked, available: b.available, balance_date: b.reference_date });
+          const r = await bankGuard.read(a, "balances", async () => simplifyBalances(await eb.getBalances(a.uid)));
+          out.push({ ...base, booked: r.value.booked, available: r.value.available, balance_date: r.value.reference_date, ...freshness(r) });
         } catch (err) {
-          out.push({ ...base, balance_error: err instanceof EnableBankingError ? `${err.status}${err.consentGone ? " (consent expired, run start_consent)" : ""}` : String(err) });
+          out.push({ ...base, balance_error: err instanceof BankReadError ? err.message : err instanceof EnableBankingError ? err.summary : String(err) });
         }
       }
       if (!out.length) return json({ accounts: [], hint: "No accounts linked yet. Use start_consent to connect a bank." });
@@ -447,15 +461,10 @@ export function registerTools(server: McpServer, opts: { attestOnly?: boolean } 
       description: "Current balances of one account. `booked` is the cleared balance (use this for net worth); `available` is what the bank says can be spent, which for credit and mortgage accounts includes the credit line.",
       inputSchema: { account: z.string().describe("Account uid or label") },
     },
-    guard(async ({ account }) =>
-      json(
-        await withAccount(account, async (a) => ({
-          account: a.label ?? a.name ?? a.uid,
-          uid: a.uid,
-          ...simplifyBalances(await eb.getBalances(a.uid)),
-        })),
-      ),
-    ),
+    guard(async ({ account }) => {
+      const r = await withAccount(account, "balances", async (a) => simplifyBalances(await eb.getBalances(a.uid)));
+      return json({ account: r.account.label ?? r.account.name ?? r.account.uid, uid: r.account.uid, ...r.value, ...freshness(r) });
+    }),
   );
 
   server.registerTool(
@@ -473,40 +482,40 @@ export function registerTools(server: McpServer, opts: { attestOnly?: boolean } 
         include_raw: z.boolean().default(false).describe("Include the bank's raw transaction objects"),
       },
     },
-    guard(async ({ account, from, to, continuation, max_pages, include_raw }) =>
-      json(
-        await withAccount(account, async (a) => {
-          const dateFrom = from ?? daysAgo(30);
-          const dateTo = to ?? isoDate();
-          const fetched = [];
-          let key = continuation;
-          let pages = 0;
-          do {
-            const pageData = await eb.getTransactionPage(a.uid, { dateFrom, dateTo, continuationKey: key });
-            fetched.push(...pageData.transactions);
-            key = pageData.continuation_key || undefined;
-            pages += 1;
-          } while (key && pages < max_pages);
-          const all = simplifyTransactions(fetched);
-          const raw = include_raw ? fetched : [];
-          all.sort((x, y) => (y.date > x.date ? 1 : y.date < x.date ? -1 : 0));
-          const inflow = all.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
-          const outflow = all.filter((t) => t.amount < 0).reduce((s, t) => s + t.amount, 0);
-          return {
-            account: a.label ?? a.name ?? a.uid,
-            uid: a.uid,
-            from: dateFrom,
-            to: dateTo,
-            count: all.length,
-            total_in: Math.round(inflow * 100) / 100,
-            total_out: Math.round(outflow * 100) / 100,
-            continuation: key,
-            transactions: all,
-            ...(include_raw ? { raw } : {}),
-          };
-        }),
-      ),
-    ),
+    guard(async ({ account, from, to, continuation, max_pages, include_raw }) => {
+      const dateFrom = from ?? daysAgo(30);
+      const dateTo = to ?? isoDate();
+      const r = await withAccount(account, `transactions|${dateFrom}|${dateTo}|${continuation ?? ""}|${max_pages}`, async (a) => {
+        const fetched = [];
+        let key = continuation;
+        let pages = 0;
+        do {
+          const pageData = await eb.getTransactionPage(a.uid, { dateFrom, dateTo, continuationKey: key });
+          fetched.push(...pageData.transactions);
+          key = pageData.continuation_key || undefined;
+          pages += 1;
+        } while (key && pages < max_pages);
+        return { fetched, key };
+      });
+      const { fetched, key } = r.value;
+      const all = simplifyTransactions(fetched);
+      all.sort((x, y) => (y.date > x.date ? 1 : y.date < x.date ? -1 : 0));
+      const inflow = all.filter((t) => t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
+      const outflow = all.filter((t) => t.amount < 0).reduce((sum, t) => sum + t.amount, 0);
+      return json({
+        account: r.account.label ?? r.account.name ?? r.account.uid,
+        uid: r.account.uid,
+        from: dateFrom,
+        to: dateTo,
+        count: all.length,
+        total_in: Math.round(inflow * 100) / 100,
+        total_out: Math.round(outflow * 100) / 100,
+        continuation: key,
+        ...freshness(r),
+        transactions: all,
+        ...(include_raw ? { raw: fetched } : {}),
+      });
+    }),
   );
 
   server.registerTool(
