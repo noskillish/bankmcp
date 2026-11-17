@@ -6,12 +6,18 @@ import { join } from "node:path";
 
 process.env.ADMIN_PASSWORD = "correct horse";
 process.env.BASE_URL = "http://localhost:8080";
-const { SingleUserProvider, hashPassword, verifyPassword } = await import("../src/auth.ts");
+delete process.env.ALLOWED_REDIRECT_HOSTS;
+const { SingleUserProvider, hashPassword, verifyPassword, contentSecurityPolicy } = await import("../src/auth.ts");
 const { Store } = await import("../src/store.ts");
 
 const fakeRes = () => {
   const out = { status: 0, body: "" };
-  const res = { status: (s: number) => ((out.status = s), res), type: () => res, send: (b: string) => ((out.body = b), res) };
+  const res = {
+    status: (s: number) => ((out.status = s), res),
+    set: () => res,
+    type: () => res,
+    send: (b: string) => ((out.body = b), res),
+  };
   return { out, res: res as unknown as import("express").Response };
 };
 
@@ -109,11 +115,50 @@ test("clients may only redirect to allowed hosts", async () => {
   const provider = new SingleUserProvider(new Store(join(mkdtempSync(join(tmpdir(), "bank-")), "store.json")));
   await assert.rejects(async () => provider.clientsStore.registerClient!({ redirect_uris: ["https://evil.example/cb"] }), /not allowed/);
   await provider.clientsStore.registerClient!({ redirect_uris: ["https://claude.ai/api/mcp/auth_callback", "http://localhost:53421/callback"] });
+  await provider.clientsStore.registerClient!({ redirect_uris: ["cursor://anysphere.cursor-mcp/oauth/callback"] });
   await assert.rejects(async () => provider.clientsStore.registerClient!({ redirect_uris: ["https://claude.ai.evil.example/cb"] }), /not allowed/);
+  await assert.rejects(async () => provider.clientsStore.registerClient!({ redirect_uris: ["cursor://evil.example/oauth/callback"] }), /not allowed/);
 });
 
 test("well-known MCP client domains are allowed by default", async () => {
   const { redirectAllowed } = await import("../src/auth.ts");
-  for (const u of ["https://claude.ai/api/mcp/auth_callback", "https://chatgpt.com/connector_platform_oauth_redirect", "https://chat.mistral.ai/oauth/callback", "https://cursor.com/oauth/callback", "http://localhost:3456/cb"]) assert.equal(redirectAllowed(u), true, u);
-  for (const u of ["https://evil.example/cb", "https://chatgpt.com.evil.example/cb", "https://notclaude.ai/cb"]) assert.equal(redirectAllowed(u), false, u);
+  for (const u of [
+    "https://claude.ai/api/mcp/auth_callback",
+    "https://chatgpt.com/connector_platform_oauth_redirect",
+    "https://chat.mistral.ai/oauth/callback",
+    "https://cursor.com/oauth/callback",
+    "https://www.cursor.com/agents/mcp/oauth/callback",
+    "cursor://anysphere.cursor-mcp/oauth/callback",
+    "http://localhost:3456/cb",
+  ]) assert.equal(redirectAllowed(u), true, u);
+  for (const u of [
+    "https://evil.example/cb",
+    "https://chatgpt.com.evil.example/cb",
+    "https://notclaude.ai/cb",
+    "cursor://evil.example/oauth/callback",
+    "cursor://anysphere.cursor-mcp.evil.example/oauth/callback",
+    "https://anysphere.cursor-mcp.evil.example/cb",
+  ]) assert.equal(redirectAllowed(u), false, u);
+});
+
+test("sign-in CSP form-action follows the validated redirect and stays strict otherwise", () => {
+  const formAction = (csp: string) => {
+    const value = /form-action ([^;]+)/.exec(csp)?.[1];
+    assert.ok(value, csp);
+    return value;
+  };
+  const strict = "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
+  assert.equal(contentSecurityPolicy(), strict);
+  assert.equal(
+    contentSecurityPolicy({ script: true }),
+    "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+  );
+  assert.equal(formAction(contentSecurityPolicy({ redirectUri: "https://www.cursor.com/agents/mcp/oauth/callback?code=secret" })), "'self' https://www.cursor.com");
+  assert.equal(formAction(contentSecurityPolicy({ redirectUri: "https://cursor.com/oauth/callback" })), "'self' https://cursor.com");
+  assert.equal(formAction(contentSecurityPolicy({ redirectUri: "cursor://anysphere.cursor-mcp/oauth/callback" })), "'self' cursor: cursor://anysphere.cursor-mcp");
+  assert.equal(formAction(contentSecurityPolicy({ redirectUri: "http://localhost:3456/cb" })), "'self' http://localhost:3456");
+  assert.equal(contentSecurityPolicy({ redirectUri: "https://www.cursor.com/agents/mcp/oauth/callback?code=secret" }).includes("secret"), false);
+  assert.equal(contentSecurityPolicy({ redirectUri: "https://evil.example/cb" }), strict);
+  assert.equal(contentSecurityPolicy({ redirectUri: "javascript://cursor.com" }), strict);
+  assert.equal(contentSecurityPolicy({ redirectUri: "cursor://evil.example/oauth/callback" }), strict);
 });

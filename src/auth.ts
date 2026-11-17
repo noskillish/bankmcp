@@ -52,6 +52,39 @@ export function redirectAllowed(uri: string): boolean {
   }
 }
 
+// Chrome checks form-action against the URL a password form redirects to, not
+// only the form's own action. 'self' covers POST /login. The extra source is
+// the origin of the redirect_uri this authorize request already validated.
+export function contentSecurityPolicy(opts: { redirectUri?: string; script?: boolean } = {}): string {
+  const targets = opts.redirectUri ? formActionSources(opts.redirectUri) : [];
+  const directives = [
+    "default-src 'none'",
+    "style-src 'unsafe-inline'",
+    ...(opts.script ? ["script-src 'unsafe-inline'"] : []),
+    `form-action 'self'${targets.length ? ` ${targets.join(" ")}` : ""}`,
+    "frame-ancestors 'none'",
+    "base-uri 'none'",
+  ];
+  return directives.join("; ");
+}
+
+function formActionSources(redirectUri: string): string[] {
+  if (!redirectAllowed(redirectUri)) return [];
+  let url: URL;
+  try {
+    url = new URL(redirectUri);
+  } catch {
+    return [];
+  }
+  // Never copy a userinfo or a query (the authorization code) into the header.
+  if (url.username || url.password) return [];
+  if (url.protocol === "http:" || url.protocol === "https:") return url.origin === "null" ? [] : [url.origin];
+  if (url.protocol !== "cursor:") return [];
+  const host = url.host.toLowerCase();
+  if (!/^[a-z0-9.-]+$/.test(host)) return ["cursor:"];
+  return ["cursor:", `cursor://${host}`];
+}
+
 const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 const token = () => randomBytes(32).toString("base64url");
 const now = () => Math.floor(Date.now() / 1000);
@@ -124,11 +157,15 @@ export class SingleUserProvider implements OAuthServerProvider {
     this.sweep();
     const id = token();
     this.pendingLogins.set(id, { client, params, expires: now() + LOGIN_TTL, attempts: 0 });
-    res.status(200).type("html").send(loginPage({ requestId: id, clientName: client.client_name, returnTo: new URL(params.redirectUri).hostname }));
+    res
+      .status(200)
+      .set("Content-Security-Policy", contentSecurityPolicy({ redirectUri: params.redirectUri }))
+      .type("html")
+      .send(loginPage({ requestId: id, clientName: client.client_name, returnTo: new URL(params.redirectUri).hostname }));
   }
 
   /** Called by POST /login. Returns the redirect URL on success, or an error message. */
-  completeLogin(requestId: string, password: string, ip: string): { redirect: string } | { error: string; requestId?: string } {
+  completeLogin(requestId: string, password: string, ip: string): { redirect: string } | { error: string; requestId?: string; redirectUri?: string } {
     this.sweep();
     const lock = this.failures.get(ip);
     if (lock && lock.until > now()) {
@@ -147,7 +184,8 @@ export class SingleUserProvider implements OAuthServerProvider {
       this.failures.set(ip, f);
       if (pending.attempts >= 5) this.pendingLogins.delete(requestId);
       this.onLogin?.({ ok: false, ip, clientName: pending.client.client_name, reason: "wrong password" });
-      return { error: "Wrong password.", requestId: pending.attempts < 5 ? requestId : undefined };
+      const again = pending.attempts < 5;
+      return { error: "Wrong password.", requestId: again ? requestId : undefined, redirectUri: again ? pending.params.redirectUri : undefined };
     }
 
     this.pendingLogins.delete(requestId);

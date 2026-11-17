@@ -79,7 +79,8 @@ export const config = {
   // Hosts an OAuth client may send the sign-in back to. Stops a phishing link
   // from registering a client that redirects your authorization code elsewhere.
   // Defaults cover the well-known MCP clients; subdomains are included.
-  allowedRedirectHosts: (env.ALLOWED_REDIRECT_HOSTS ?? "claude.ai,claude.com,chatgpt.com,openai.com,mistral.ai,cursor.com,cursor.sh,vscode.dev,localhost,127.0.0.1")
+  // anysphere.cursor-mcp is the host in cursor://anysphere.cursor-mcp/oauth/callback.
+  allowedRedirectHosts: (env.ALLOWED_REDIRECT_HOSTS ?? "claude.ai,claude.com,chatgpt.com,openai.com,mistral.ai,cursor.com,cursor.sh,anysphere.cursor-mcp,vscode.dev,localhost,127.0.0.1")
     .split(",")
     .map((h) => h.trim().toLowerCase())
     .filter(Boolean),

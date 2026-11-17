@@ -8,7 +8,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { config, isConfigured, setupProblems } from "./config.ts";
 import { eb, EnableBankingError } from "./enablebanking.ts";
 import { store } from "./store.ts";
-import { SingleUserProvider } from "./auth.ts";
+import { SingleUserProvider, contentSecurityPolicy } from "./auth.ts";
 import { connectedPage, failedPage, loginPage, privacyPage, setupPage, signInFailedPage, statusPage, termsPage } from "./pages.ts";
 import { applySetup, setupAvailable } from "./setup.ts";
 import { createServer, VERSION } from "./mcp.ts";
@@ -30,7 +30,7 @@ export function createApp(opts: AppOptions) {
       "X-Frame-Options": "DENY",
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "no-referrer",
-      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+      "Content-Security-Policy": contentSecurityPolicy(),
     });
     next();
   });
@@ -83,7 +83,7 @@ export function createApp(opts: AppOptions) {
 
   const callbackUrl = new URL("/callback", baseUrl).href;
   // The setup page reads the chosen key file in the browser, which needs one inline script.
-  const setupCsp = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
+  const setupCsp = contentSecurityPolicy({ script: true });
 
   app.get("/", (_req, res) => {
     if (setupAvailable()) return void res.set("Content-Security-Policy", setupCsp).type("html").send(setupPage({ baseUrl: config.baseUrl }));
@@ -122,8 +122,16 @@ export function createApp(opts: AppOptions) {
   if (opts.remote) app.post("/login", express.urlencoded({ extended: false }), (req, res) => {
     const { request, password } = req.body as Record<string, string | undefined>;
     const result = provider.completeLogin(String(request ?? ""), String(password ?? ""), req.ip ?? "unknown");
-    if ("redirect" in result) return void res.redirect(302, result.redirect);
-    if (result.requestId) return void res.status(401).type("html").send(loginPage({ requestId: result.requestId, error: result.error }));
+    // Chrome applies the form's form-action to this redirect. 'self' alone
+    // blocks the hop back to the MCP client's callback.
+    if ("redirect" in result) {
+      res.set("Content-Security-Policy", contentSecurityPolicy({ redirectUri: result.redirect }));
+      return void res.redirect(302, result.redirect);
+    }
+    if (result.requestId) {
+      res.set("Content-Security-Policy", contentSecurityPolicy({ redirectUri: result.redirectUri }));
+      return void res.status(401).type("html").send(loginPage({ requestId: result.requestId, error: result.error }));
+    }
     res.status(400).type("html").send(signInFailedPage(result.error));
   });
 
