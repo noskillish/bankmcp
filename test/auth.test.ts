@@ -103,12 +103,60 @@ test("revokeAll drops every token", async () => {
   const id = /name="request" value="([^"]+)"/.exec(out.body)![1]!;
   const ok = provider.completeLogin(id, "correct horse", "5.5.5.5");
   assert.ok("redirect" in ok);
-  assert.deepEqual(events, [{ ok: true, ip: "5.5.5.5", clientName: "Claude" }]);
+  assert.deepEqual(events, [{ ok: true, ip: "5.5.5.5", clientName: "Claude", clientId: client.client_id, redirectHost: "claude.ai", state: false }]);
   const tokens = await provider.exchangeAuthorizationCode(client, new URL(ok.redirect).searchParams.get("code")!, undefined, "https://claude.ai/cb");
   await provider.verifyAccessToken(tokens.access_token);
   provider.revokeAll();
   await assert.rejects(provider.verifyAccessToken(tokens.access_token), /Invalid/);
   await assert.rejects(provider.exchangeRefreshToken(client, tokens.refresh_token!), /Invalid/);
+});
+
+test("a missing sign-in is expired, already used, or unknown", async () => {
+  const events: { reason?: string }[] = [];
+  const provider = new SingleUserProvider(new Store(join(mkdtempSync(join(tmpdir(), "bank-")), "store.json")), { onLogin: (e) => events.push(e) });
+  const client = await provider.clientsStore.registerClient!({ redirect_uris: ["https://claude.ai/cb"] });
+  const unknown = provider.completeLogin("not-a-real-id", "correct horse", "1.1.1.1");
+  assert.ok("error" in unknown);
+  assert.equal(events.at(-1)?.reason, "pending unknown");
+
+  const { out, res } = fakeRes();
+  await provider.authorize(client, { codeChallenge: "c", redirectUri: "https://claude.ai/cb", state: "xyz" }, res);
+  const id = /name="request" value="([^"]+)"/.exec(out.body)![1]!;
+  const ok = provider.completeLogin(id, "correct horse", "1.1.1.1");
+  assert.ok("redirect" in ok);
+  provider.completeLogin(id, "correct horse", "1.1.1.1");
+  assert.equal(events.at(-1)?.reason, "pending used");
+
+  const again = fakeRes();
+  await provider.authorize(client, { codeChallenge: "c", redirectUri: "https://claude.ai/cb" }, again.res);
+  const id2 = /name="request" value="([^"]+)"/.exec(again.out.body)![1]!;
+  const started = Date.now();
+  const original = Date.now;
+  Date.now = () => started + 31 * 60 * 1000;
+  try {
+    const expired = provider.completeLogin(id2, "correct horse", "1.1.1.1");
+    assert.ok("error" in expired);
+    assert.equal(events.at(-1)?.reason, "pending expired");
+  } finally {
+    Date.now = original;
+  }
+});
+
+test("an expired authorization code is not reported as already used", async () => {
+  const store = new Store(join(mkdtempSync(join(tmpdir(), "bank-")), "store.json"));
+  const provider = new SingleUserProvider(store);
+  const client = await provider.clientsStore.registerClient!({ redirect_uris: ["https://claude.ai/cb"] });
+  const { out, res } = fakeRes();
+  await provider.authorize(client, { codeChallenge: "c", redirectUri: "https://claude.ai/cb" }, res);
+  const id = /name="request" value="([^"]+)"/.exec(out.body)![1]!;
+  const ok = provider.completeLogin(id, "correct horse", "1.1.1.1");
+  assert.ok("redirect" in ok);
+  const code = new URL(ok.redirect).searchParams.get("code")!;
+  for (const entry of Object.values(store.data.oauth.codes)) entry.expires = 0;
+  const { tokenDiag } = await import("../src/oauth-log.ts");
+  const diag = { code: "n/a" as const, pkce: "n/a" as const, redirect_match: "n/a" as const, resource_match: null };
+  await assert.rejects(() => tokenDiag.run(diag, () => provider.challengeForAuthorizationCode(client, code)), /Invalid or expired/);
+  assert.equal(diag.code, "expired");
 });
 
 test("clients may only redirect to allowed hosts", async () => {

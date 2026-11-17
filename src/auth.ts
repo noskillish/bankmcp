@@ -11,6 +11,7 @@ import type { OAuthClientInformationFull, OAuthTokenRevocationRequest, OAuthToke
 import { InvalidGrantError, InvalidClientError, InvalidClientMetadataError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import { config } from "./config.ts";
 import { loginPage } from "./pages.ts";
+import { clipName, oauthLog, redirectHost, registerDiag, tokenDiag } from "./oauth-log.ts";
 export { loginPage, shell as page } from "./pages.ts";
 import type { Store, OAuthClient } from "./store.ts";
 
@@ -102,11 +103,20 @@ export interface LoginEvent {
   ok: boolean;
   ip: string;
   clientName?: string;
+  clientId?: string;
+  redirectHost?: string;
+  state?: boolean;
   reason?: string;
 }
 
+type PendingFate = "expired" | "used" | "exhausted";
+
 export class SingleUserProvider implements OAuthServerProvider {
   private pendingLogins = new Map<string, PendingLogin>();
+  /** Why a sign-in id was dropped, so a later POST can say expired, used, or unknown. */
+  private pendingFate = new Map<string, PendingFate>();
+  /** sha256 of authorization codes already exchanged. The code itself is not kept. */
+  private spentCodes = new Set<string>();
   private failures = new Map<string, { count: number; until: number }>();
   private store: Store;
   private onLogin?: (e: LoginEvent) => void;
@@ -119,6 +129,8 @@ export class SingleUserProvider implements OAuthServerProvider {
   /** Every token and pending code is dropped. Used when the admin password changes. */
   revokeAll(): void {
     this.pendingLogins.clear();
+    this.pendingFate.clear();
+    this.spentCodes.clear();
     this.store.update((d) => {
       d.oauth.tokens = {};
       d.oauth.codes = {};
@@ -132,8 +144,20 @@ export class SingleUserProvider implements OAuthServerProvider {
         return store.data.oauth.clients[clientId] as OAuthClientInformationFull | undefined;
       },
       registerClient(client) {
+        const registered = registerDiag.getStore();
+        const fields = {
+          client_name: clipName(client.client_name),
+          redirect_hosts: client.redirect_uris.map((uri) => redirectHost(uri)),
+          token_endpoint_auth_method: typeof client.token_endpoint_auth_method === "string" && client.token_endpoint_auth_method.trim()
+            ? clipName(client.token_endpoint_auth_method)
+            : "absent",
+        };
         for (const uri of client.redirect_uris) {
-          if (!redirectAllowed(uri)) throw new InvalidClientMetadataError(`redirect_uri host not allowed: ${new URL(uri).hostname}. Set ALLOWED_REDIRECT_HOSTS on the server to permit it.`);
+          if (!redirectAllowed(uri)) {
+            if (registered) registered.logged = true;
+            oauthLog("register", { ...fields, ok: false });
+            throw new InvalidClientMetadataError(`redirect_uri host not allowed: ${new URL(uri).hostname}. Set ALLOWED_REDIRECT_HOSTS on the server to permit it.`);
+          }
         }
         // The SDK handler has already generated the id and, for confidential clients, the secret.
         const incoming = client as Partial<OAuthClient>;
@@ -148,6 +172,8 @@ export class SingleUserProvider implements OAuthServerProvider {
           if (ids.length > 20) for (const id of ids.slice(0, ids.length - 20)) delete d.oauth.clients[id];
           d.oauth.clients[full.client_id] = full;
         });
+        if (registered) registered.logged = true;
+        oauthLog("register", { ...fields, ok: true });
         return full as OAuthClientInformationFull;
       },
     };
@@ -174,7 +200,11 @@ export class SingleUserProvider implements OAuthServerProvider {
     }
 
     const pending = this.pendingLogins.get(requestId);
-    if (!pending) return { error: "This sign-in page has expired or the server restarted. Go back to your assistant, click Connect again, and enter the password within 30 minutes." };
+    if (!pending) {
+      const fate = this.pendingFate.get(requestId) ?? "unknown";
+      this.onLogin?.({ ok: false, ip, reason: `pending ${fate}` });
+      return { error: "This sign-in page has expired or the server restarted. Go back to your assistant, click Connect again, and enter the password within 30 minutes." };
+    }
 
     if (!verifyPassword(password)) {
       pending.attempts += 1;
@@ -182,15 +212,26 @@ export class SingleUserProvider implements OAuthServerProvider {
       f.count += 1;
       if (f.count >= 5) f.until = now() + 15 * 60;
       this.failures.set(ip, f);
-      if (pending.attempts >= 5) this.pendingLogins.delete(requestId);
+      if (pending.attempts >= 5) {
+        this.pendingLogins.delete(requestId);
+        this.noteFate(requestId, "exhausted");
+      }
       this.onLogin?.({ ok: false, ip, clientName: pending.client.client_name, reason: "wrong password" });
       const again = pending.attempts < 5;
       return { error: "Wrong password.", requestId: again ? requestId : undefined, redirectUri: again ? pending.params.redirectUri : undefined };
     }
 
     this.pendingLogins.delete(requestId);
+    this.noteFate(requestId, "used");
     this.failures.delete(ip);
-    this.onLogin?.({ ok: true, ip, clientName: pending.client.client_name });
+    this.onLogin?.({
+      ok: true,
+      ip,
+      clientName: pending.client.client_name,
+      clientId: pending.client.client_id,
+      redirectHost: new URL(pending.params.redirectUri).hostname,
+      state: Boolean(pending.params.state),
+    });
     const code = token();
     this.store.update((d) => {
       for (const [c, v] of Object.entries(d.oauth.codes)) if (v.expires < now()) delete d.oauth.codes[c];
@@ -210,19 +251,42 @@ export class SingleUserProvider implements OAuthServerProvider {
   }
 
   async challengeForAuthorizationCode(client: OAuthClientInformationFull, authorizationCode: string): Promise<string> {
-    const c = this.store.data.oauth.codes[sha256(authorizationCode)];
-    if (!c || c.client_id !== client.client_id || c.expires < now()) throw new InvalidGrantError("Invalid or expired authorization code");
+    const key = sha256(authorizationCode);
+    const c = this.store.data.oauth.codes[key];
+    const state = this.codeState(key, c, client.client_id);
+    const diag = tokenDiag.getStore();
+    if (diag) {
+      diag.code = state;
+      if (state === "found") diag.pkce = "pending";
+    }
+    if (state !== "found" || !c) throw new InvalidGrantError("Invalid or expired authorization code");
     return c.code_challenge;
   }
 
   async exchangeAuthorizationCode(client: OAuthClientInformationFull, authorizationCode: string, _codeVerifier?: string, redirectUri?: string, resource?: URL): Promise<OAuthTokens> {
     const key = sha256(authorizationCode);
     const c = this.store.data.oauth.codes[key];
-    if (!c || c.client_id !== client.client_id || c.expires < now()) throw new InvalidGrantError("Invalid or expired authorization code");
-    if (redirectUri && redirectUri !== c.redirect_uri) throw new InvalidGrantError("redirect_uri does not match");
-    if (resource && c.resource && resource.href !== c.resource) throw new InvalidGrantError("resource does not match");
+    const state = this.codeState(key, c, client.client_id);
+    const diag = tokenDiag.getStore();
+    // The SDK calls this only after the local PKCE check has passed.
+    if (diag) {
+      diag.code = state;
+      diag.pkce = "ok";
+    }
+    if (state !== "found" || !c) throw new InvalidGrantError("Invalid or expired authorization code");
+    if (redirectUri && redirectUri !== c.redirect_uri) {
+      if (diag) diag.redirect_match = false;
+      throw new InvalidGrantError("redirect_uri does not match");
+    }
+    if (diag) diag.redirect_match = redirectUri ? true : "absent";
+    if (resource && c.resource && resource.href !== c.resource) {
+      if (diag) diag.resource_match = false;
+      throw new InvalidGrantError("resource does not match");
+    }
+    if (diag) diag.resource_match = resource ? true : null;
     return this.store.update((d) => {
       delete d.oauth.codes[key];
+      this.rememberSpent(key);
       return this.issue(d.oauth.tokens, client.client_id, c.scopes, c.resource);
     });
   }
@@ -230,9 +294,14 @@ export class SingleUserProvider implements OAuthServerProvider {
   async exchangeRefreshToken(client: OAuthClientInformationFull, refreshToken: string, scopes?: string[], resource?: URL): Promise<OAuthTokens> {
     const key = sha256(refreshToken);
     const t = this.store.data.oauth.tokens[key];
+    const diag = tokenDiag.getStore();
     if (!t || t.kind !== "refresh" || t.client_id !== client.client_id) throw new InvalidGrantError("Invalid refresh token");
     if (t.expires < now()) throw new InvalidGrantError("Refresh token expired");
-    if (resource && t.resource && resource.href !== t.resource) throw new InvalidGrantError("resource does not match");
+    if (resource && t.resource && resource.href !== t.resource) {
+      if (diag) diag.resource_match = false;
+      throw new InvalidGrantError("resource does not match");
+    }
+    if (diag) diag.resource_match = resource ? true : null;
     return this.store.update((d) => {
       delete d.oauth.tokens[key];
       return this.issue(d.oauth.tokens, client.client_id, scopes?.length ? scopes : t.scopes, t.resource);
@@ -261,9 +330,34 @@ export class SingleUserProvider implements OAuthServerProvider {
     return { access_token: access, token_type: "bearer", expires_in: ACCESS_TTL, refresh_token: refresh, scope: scopes.join(" ") || undefined };
   }
 
+  private noteFate(id: string, fate: PendingFate): void {
+    this.pendingFate.set(id, fate);
+    if (this.pendingFate.size <= 200) return;
+    const oldest = this.pendingFate.keys().next().value;
+    if (oldest) this.pendingFate.delete(oldest);
+  }
+
+  private rememberSpent(key: string): void {
+    this.spentCodes.add(key);
+    if (this.spentCodes.size <= 200) return;
+    const oldest = this.spentCodes.values().next().value;
+    if (oldest) this.spentCodes.delete(oldest);
+  }
+
+  private codeState(key: string, record: { client_id: string; expires: number } | undefined, clientId: string): TokenDiagCode {
+    if (!record || record.client_id !== clientId) return this.spentCodes.has(key) ? "used" : "missing";
+    if (record.expires < now()) return "expired";
+    return "found";
+  }
+
   private sweep() {
     const t = now();
-    for (const [k, v] of this.pendingLogins) if (v.expires < t) this.pendingLogins.delete(k);
+    for (const [k, v] of this.pendingLogins) if (v.expires < t) {
+      this.pendingLogins.delete(k);
+      this.noteFate(k, "expired");
+    }
     for (const [k, v] of this.failures) if (v.until && v.until < t) this.failures.delete(k);
   }
 }
+
+type TokenDiagCode = "found" | "expired" | "used" | "missing";

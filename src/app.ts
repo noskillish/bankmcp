@@ -1,14 +1,16 @@
 // HTTP entry point: the MCP endpoint behind OAuth, the OAuth server itself,
 // the Enable Banking redirect target, and a status page.
 import { createHash } from "node:crypto";
-import express from "express";
+import express, { type Response } from "express";
 import { mcpAuthRouter, getOAuthProtectedResourceMetadataUrl } from "@modelcontextprotocol/sdk/server/auth/router.js";
 import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
+import { InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { config, isConfigured, setupProblems } from "./config.ts";
 import { eb, EnableBankingError } from "./enablebanking.ts";
 import { store } from "./store.ts";
 import { SingleUserProvider, contentSecurityPolicy } from "./auth.ts";
+import { grantForLog, hostsOf, idPrefix, oauthLog, registerDiag, resourceForLog, safeReason, tokenDiag, type RegisterDiag, type TokenDiag } from "./oauth-log.ts";
 import { connectedPage, failedPage, loginPage, privacyPage, setupPage, signInFailedPage, statusPage, termsPage } from "./pages.ts";
 import { applySetup, setupAvailable } from "./setup.ts";
 import { createServer, VERSION } from "./mcp.ts";
@@ -42,6 +44,7 @@ export function createApp(opts: AppOptions) {
       const who = e.clientName ? ` for ${e.clientName}` : "";
       if (e.ok) {
         log(`sign-in from ${e.ip}${who}`);
+        oauthLog("login", { client: idPrefix(e.clientId), redirect_host: e.redirectHost ?? "none", state: e.state === true });
         notify(`${config.appName}: new sign-in from ${e.ip}${who}. If this was not you, change ADMIN_PASSWORD now; that logs every client out.`);
       } else {
         log(`failed sign-in from ${e.ip}${who} (${e.reason})`);
@@ -108,16 +111,95 @@ export function createApp(opts: AppOptions) {
 
   // --- OAuth server for the MCP connector (single user) ---
 
+  const protectedResource = {
+    resource: mcpUrl.href,
+    authorization_servers: [baseUrl.href],
+    scopes_supported: ["bank:read"],
+    resource_name: "bank-mcp",
+  };
+
+  if (opts.remote) {
+    app.use("/register", (req, res, next) => {
+      const diag: RegisterDiag = { logged: false };
+      const captured = captureOAuthError(res);
+      res.on("finish", () => {
+        if (diag.logged) return;
+        const body = req.body as Record<string, unknown> | undefined;
+        oauthLog("register", {
+          client_name: typeof body?.client_name === "string" ? body.client_name.slice(0, 80) : "none",
+          redirect_hosts: hostsOf(body?.redirect_uris),
+          token_endpoint_auth_method: typeof body?.token_endpoint_auth_method === "string" ? body.token_endpoint_auth_method.slice(0, 40) : "absent",
+          ok: false,
+          status: res.statusCode,
+          error: captured.error ?? "invalid_request",
+        });
+      });
+      registerDiag.run(diag, () => next());
+    });
+    app.use("/authorize", (_req, res, next) => {
+      const captured = captureOAuthError(res);
+      res.on("finish", () => {
+        if (res.statusCode === 200) return;
+        let error = captured.error;
+        let description = captured.description;
+        if (!error && (res.statusCode === 302 || res.statusCode === 303)) {
+          const location = res.getHeader("location");
+          if (typeof location === "string") {
+            try {
+              const url = new URL(location, baseUrl);
+              error = url.searchParams.get("error") ?? undefined;
+              description = url.searchParams.get("error_description") ?? undefined;
+            } catch {
+              description = "redirect";
+            }
+          }
+        }
+        oauthLog("authorize", { status: res.statusCode, error: error ?? "unknown", reason: safeReason(description) });
+      });
+      next();
+    });
+    app.use("/token", (req, res, next) => {
+      const diag: TokenDiag = { code: "n/a", pkce: "n/a", redirect_match: "n/a", resource_match: null };
+      const captured = captureOAuthError(res);
+      res.on("finish", () => {
+        const body = req.body as Record<string, unknown> | undefined;
+        const client = (req as typeof req & { client?: { client_id?: string } }).client;
+        let pkce = diag.pkce;
+        if (pkce === "pending") pkce = captured.error === "invalid_grant" ? "fail" : "n/a";
+        oauthLog("token", {
+          grant_type: grantForLog(body?.grant_type),
+          client: idPrefix(client?.client_id ?? (typeof body?.client_id === "string" ? body.client_id : undefined)),
+          client_known: Boolean(client?.client_id),
+          redirect_match: diag.redirect_match,
+          pkce,
+          code: diag.code,
+          resource: resourceForLog(body?.resource),
+          resource_match: diag.resource_match,
+          status: res.statusCode,
+          error: captured.error ?? null,
+        });
+      });
+      tokenDiag.run(diag, () => next());
+    });
+  }
+
   if (opts.remote) app.use(
     mcpAuthRouter({
       provider,
       issuerUrl: baseUrl,
       resourceServerUrl: mcpUrl,
-      resourceName: "bank-mcp",
-      scopesSupported: ["bank:read"],
+      resourceName: protectedResource.resource_name,
+      scopesSupported: [...protectedResource.scopes_supported],
       clientRegistrationOptions: { clientSecretExpirySeconds: 0 },
     }),
   );
+
+  // Cursor fetches the metadata at the host root. The router above also
+  // serves the same document at /.well-known/oauth-protected-resource/mcp.
+  if (opts.remote) app.get("/.well-known/oauth-protected-resource", (_req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    res.json(protectedResource);
+  });
 
   if (opts.remote) app.post("/login", express.urlencoded({ extended: false }), (req, res) => {
     const { request, password } = req.body as Record<string, string | undefined>;
@@ -137,7 +219,33 @@ export function createApp(opts: AppOptions) {
 
   // --- MCP endpoint (stateless: one transport per request) ---
 
-  const bearer = requireBearerAuth({ verifier: provider, resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(mcpUrl) });
+  const bearer = requireBearerAuth({
+    verifier: {
+      verifyAccessToken: async (tokenValue: string) => {
+        try {
+          const info = await provider.verifyAccessToken(tokenValue);
+          if (info.resource && !sameResource(info.resource.href, mcpUrl.href)) {
+            throw new InvalidTokenError("Token was not issued for this resource");
+          }
+          return info;
+        } catch (err) {
+          if (err instanceof InvalidTokenError) throw err;
+          const message = err instanceof Error ? err.message : "Invalid access token";
+          throw new InvalidTokenError(/expired/i.test(message) ? "Access token expired" : "Invalid access token");
+        }
+      },
+    },
+    resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(mcpUrl),
+  });
+
+  if (opts.remote) app.use("/mcp", (req, res, next) => {
+    const captured = captureOAuthError(res);
+    res.on("finish", () => {
+      if (res.statusCode !== 401) return;
+      oauthLog("mcp", { status: 401, reason: mcpAuthReason(req.headers.authorization, captured.description) });
+    });
+    next();
+  });
 
   if (opts.remote) app.post("/mcp", bearer, express.json({ limit: "1mb" }), async (req, res) => {
     const server = createServer();
@@ -181,4 +289,34 @@ export function createApp(opts: AppOptions) {
   });
 
   return Object.assign(app, { startWatcherOnce });
+}
+
+function captureOAuthError(res: Response): { error?: string; description?: string } {
+  const captured: { error?: string; description?: string } = {};
+  const orig = res.json.bind(res);
+  res.json = ((body?: unknown) => {
+    if (res.statusCode >= 400 && body && typeof body === "object") {
+      const record = body as { error?: unknown; error_description?: unknown };
+      if (typeof record.error === "string" && /^[a-z0-9_]+$/.test(record.error)) captured.error = record.error;
+      if (typeof record.error_description === "string") captured.description = record.error_description;
+    }
+    return orig(body);
+  }) as typeof res.json;
+  return captured;
+}
+
+function sameResource(reported: string, expected: string): boolean {
+  const clean = (value: string) => {
+    const hash = value.indexOf("#");
+    return (hash === -1 ? value : value.slice(0, hash)).replace(/\/$/, "");
+  };
+  return clean(reported) === clean(expected);
+}
+
+function mcpAuthReason(header: string | undefined, description: string | undefined): "missing" | "invalid" | "expired" | "audience" {
+  const text = description ?? "";
+  if (!header || /missing authorization/i.test(text)) return "missing";
+  if (/not issued for this resource/i.test(text)) return "audience";
+  if (/expired/i.test(text)) return "expired";
+  return "invalid";
 }
