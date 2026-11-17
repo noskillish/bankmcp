@@ -1,11 +1,11 @@
 # .github/dependabot.yml (fleet docs/standard.md). Keep only the ecosystems the
-# repo uses. Weekly and grouped to save Actions minutes.
+# repo uses. monthly and grouped to save Actions minutes.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     open-pull-requests-limit: 5
     cooldown:
       default-days: 7
@@ -16,7 +16,7 @@ updates:
   - package-ecosystem: docker
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     open-pull-requests-limit: 5
     cooldown:
       default-days: 7
@@ -27,7 +27,7 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     cooldown:
       default-days: 7
     # Private srosenlund/* are unreachable for Dependabot; fleet SHAs are bumped
