@@ -1,0 +1,41 @@
+name: auto-update
+on:
+  schedule:
+    - cron: "23 4 * * 1" # mandag 04:23 UTC
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Merge upstream (noskillish/bankmcp) into PR branch
+        id: merge
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          set -euo pipefail
+          git config user.name "auto-update"
+          git config user.email "auto-update@users.noreply.github.com"
+          git remote add upstream https://github.com/noskillish/bankmcp.git
+          git fetch upstream main
+          BRANCH="auto-update/upstream-$(date -u +%Y%m%d)"
+          git checkout -B "$BRANCH"
+          BEFORE=$(git rev-parse HEAD)
+          if git merge --no-edit upstream/main; then
+            AFTER=$(git rev-parse HEAD)
+            if [ "$BEFORE" = "$AFTER" ]; then
+              echo "Ingen nye upstream-commits."
+              exit 0
+            fi
+            git push -u origin "$BRANCH"
+            gh pr create --title "chore: sync upstream noskillish/bankmcp" \
+              --body "Automatisk upstream-merge. Review egne ændringer (ci.yml, Dockerfile, .cursor) før merge." \
+              --base main --head "$BRANCH" || true
+          else
+            git merge --abort || true
+            echo "::error::Upstream merge-konflikt (noskillish/bankmcp). Manuel sync kræves."
+            exit 1
+          fi

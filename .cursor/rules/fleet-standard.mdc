@@ -1,0 +1,14 @@
+---
+description: Fleet-standard for agenter i srosenlund-repos
+alwaysApply: true
+---
+
+# Fleet-standard
+
+- Arbejd på en branch og åbn en PR. Push aldrig til `main`.
+- Required check er `ci / gate`. Merge først, når den er grøn.
+- Merge med squash auto-merge (`gh pr merge --auto --squash`).
+- Readback efter produktion: Vercel `readySubstate` er `PROMOTED`, eller Sliplane-loggen viser `service_deploy_success` for præcis denne SHA. Et grønt deploy er ikke readback.
+- Rollback er en revert-PR.
+- Slet aldrig et live Vercel- eller Sliplane-projekt eller live data uden Stefans GO. Tjek `status: live` i fleet `catalog.json` før oprydning.
+- Hemmeligheder kun via Doppler. Nævn kun navne. Kør `doppler run -- <cmd>`. Udskriv aldrig værdier.
