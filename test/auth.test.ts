@@ -122,9 +122,13 @@ test("a missing sign-in is expired, already used, or unknown", async () => {
   const { out, res } = fakeRes();
   await provider.authorize(client, { codeChallenge: "c", redirectUri: "https://claude.ai/cb", state: "xyz" }, res);
   const id = /name="request" value="([^"]+)"/.exec(out.body)![1]!;
+  const unknownMessage = unknown.error;
+  assert.match(unknownMessage, /expired or the server restarted/);
   const ok = provider.completeLogin(id, "correct horse", "1.1.1.1");
   assert.ok("redirect" in ok);
-  provider.completeLogin(id, "correct horse", "1.1.1.1");
+  const used = provider.completeLogin(id, "correct horse", "1.1.1.1");
+  assert.ok("error" in used);
+  assert.equal(used.error, "This sign-in is already completed — return to your assistant");
   assert.equal(events.at(-1)?.reason, "pending used");
 
   const again = fakeRes();
@@ -209,4 +213,6 @@ test("sign-in CSP form-action follows the validated redirect and stays strict ot
   assert.equal(contentSecurityPolicy({ redirectUri: "https://evil.example/cb" }), strict);
   assert.equal(contentSecurityPolicy({ redirectUri: "javascript://cursor.com" }), strict);
   assert.equal(contentSecurityPolicy({ redirectUri: "cursor://evil.example/oauth/callback" }), strict);
+  assert.match(contentSecurityPolicy({ scriptNonce: "abc_12-XY" }), /script-src 'nonce-abc_12-XY'/);
+  assert.equal(contentSecurityPolicy({ scriptNonce: "bad nonce" }).includes("script-src"), false);
 });

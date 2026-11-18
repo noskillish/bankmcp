@@ -9,9 +9,9 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { config, isConfigured, setupProblems } from "./config.ts";
 import { eb, EnableBankingError } from "./enablebanking.ts";
 import { store } from "./store.ts";
-import { SingleUserProvider, contentSecurityPolicy } from "./auth.ts";
+import { SingleUserProvider, contentSecurityPolicy, cspNonce } from "./auth.ts";
 import { grantForLog, hostsOf, idPrefix, oauthLog, registerDiag, resourceForLog, safeReason, tokenDiag, type RegisterDiag, type TokenDiag } from "./oauth-log.ts";
-import { connectedPage, failedPage, loginPage, privacyPage, setupPage, signInFailedPage, statusPage, termsPage } from "./pages.ts";
+import { connectedPage, failedPage, loginPage, privacyPage, returningPage, setupPage, signInFailedPage, statusPage, termsPage } from "./pages.ts";
 import { applySetup, setupAvailable } from "./setup.ts";
 import { createServer, VERSION } from "./mcp.ts";
 import { startWatcher } from "./watcher.ts";
@@ -204,15 +204,16 @@ export function createApp(opts: AppOptions) {
   if (opts.remote) app.post("/login", express.urlencoded({ extended: false }), (req, res) => {
     const { request, password } = req.body as Record<string, string | undefined>;
     const result = provider.completeLogin(String(request ?? ""), String(password ?? ""), req.ip ?? "unknown");
-    // Chrome applies the form's form-action to this redirect. 'self' alone
-    // blocks the hop back to the MCP client's callback.
+    // A 302 here is still the form's navigation, so form-action blocks the
+    // callback and any further redirect Cursor makes. A 200 page navigates itself.
     if ("redirect" in result) {
-      res.set("Content-Security-Policy", contentSecurityPolicy({ redirectUri: result.redirect }));
-      return void res.redirect(302, result.redirect);
+      const nonce = cspNonce();
+      return void res.status(200).set("Content-Security-Policy", contentSecurityPolicy({ scriptNonce: nonce })).type("html").send(returningPage({ url: result.redirect, nonce }));
     }
     if (result.requestId) {
-      res.set("Content-Security-Policy", contentSecurityPolicy({ redirectUri: result.redirectUri }));
-      return void res.status(401).type("html").send(loginPage({ requestId: result.requestId, error: result.error }));
+      const nonce = cspNonce();
+      res.set("Content-Security-Policy", contentSecurityPolicy({ redirectUri: result.redirectUri, scriptNonce: nonce }));
+      return void res.status(401).type("html").send(loginPage({ requestId: result.requestId, error: result.error, nonce }));
     }
     res.status(400).type("html").send(signInFailedPage(result.error));
   });

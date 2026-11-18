@@ -59,6 +59,12 @@ async function call(method: string, path: string, body?: string, contentType?: s
   return { status: res.status, location: res.headers.get("location"), text: await res.text() };
 }
 
+function callbackFrom(html: string): string {
+  const href = /id="return" href="([^"]*)"/.exec(html)?.[1];
+  assert.ok(href, html);
+  return href.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+}
+
 function pkce(): { verifier: string; challenge: string } {
   const verifier = `verifier-${randomBytes(24).toString("base64url")}`;
   const challenge = createHash("sha256").update(verifier).digest("base64url");
@@ -115,8 +121,8 @@ test("oauth logs name each step and leave out credentials", async () => {
   const requestId = /name="request" value="([^"]+)"/.exec(page.text)?.[1];
   assert.ok(requestId);
   const signedIn = await call("POST", "/login", new URLSearchParams({ request: requestId, password: "correct horse" }).toString(), "application/x-www-form-urlencoded");
-  assert.equal(signedIn.status, 302, signedIn.text);
-  const code = new URL(signedIn.location ?? "").searchParams.get("code");
+  assert.equal(signedIn.status, 200, signedIn.text);
+  const code = new URL(callbackFrom(signedIn.text)).searchParams.get("code");
   assert.ok(code);
   const loginLog = oauthLines("login").at(-1);
   assert.equal(loginLog?.redirect_host, "www.cursor.com");
@@ -125,6 +131,8 @@ test("oauth logs name each step and leave out credentials", async () => {
 
   const reused = await call("POST", "/login", new URLSearchParams({ request: requestId, password: "correct horse" }).toString(), "application/x-www-form-urlencoded");
   assert.equal(reused.status, 400);
+  assert.match(reused.text, /This sign-in is already completed — return to your assistant/);
+  assert.doesNotMatch(reused.text, /server restarted/);
   assert.match(lines.at(-1) ?? "", /pending used/);
 
   const token = await call(
@@ -175,7 +183,7 @@ test("oauth logs name each step and leave out credentials", async () => {
   const secondId = /name="request" value="([^"]+)"/.exec(secondPage.text)?.[1];
   assert.ok(secondId);
   const secondLogin = await call("POST", "/login", new URLSearchParams({ request: secondId, password: "correct horse" }).toString(), "application/x-www-form-urlencoded");
-  const secondCode = new URL(secondLogin.location ?? "").searchParams.get("code");
+  const secondCode = new URL(callbackFrom(secondLogin.text)).searchParams.get("code");
   assert.ok(secondCode);
   const mismatch = await call(
     "POST",
@@ -207,7 +215,7 @@ test("oauth logs name each step and leave out credentials", async () => {
   const foreignId = /name="request" value="([^"]+)"/.exec(foreignPage.text)?.[1];
   assert.ok(foreignId);
   const foreignLogin = await call("POST", "/login", new URLSearchParams({ request: foreignId, password: "correct horse" }).toString(), "application/x-www-form-urlencoded");
-  const foreignCode = new URL(foreignLogin.location ?? "").searchParams.get("code");
+  const foreignCode = new URL(callbackFrom(foreignLogin.text)).searchParams.get("code");
   assert.ok(foreignCode);
   const foreignToken = await call(
     "POST",

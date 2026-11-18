@@ -11,12 +11,12 @@ const fmtDate = (iso: string) => {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 };
 
-export function shell(title: string, body: string, opts: { kind?: Kind; pill?: string } = {}): string {
+export function shell(title: string, body: string, opts: { kind?: Kind; pill?: string; head?: string } = {}): string {
   const name = config.appName;
   const tab = title === name ? name : `${title} · ${name}`;
   const pill = opts.pill ? `<div class="pill ${opts.kind ?? "neutral"}">${esc(opts.pill)}</div>` : "";
   return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark"><title>${esc(tab)}</title>
+<meta name="color-scheme" content="light dark"><title>${esc(tab)}</title>${opts.head ?? ""}
 <style>
   :root{--bg:#f4f3ef;--card:#fff;--ink:#141414;--muted:#6f6e69;--line:#e6e4dd;--ok:#1f7a4d;--err:#b3261e}
   @media (prefers-color-scheme:dark){:root{--bg:#111110;--card:#1b1b1a;--ink:#f2f1ec;--muted:#9b9a94;--line:#2c2b29;--ok:#5cc08a;--err:#ff8a7a}}
@@ -58,9 +58,12 @@ export function shell(title: string, body: string, opts: { kind?: Kind; pill?: s
 </div></body></html>`;
 }
 
-export function loginPage(opts: { requestId: string; clientName?: string; returnTo?: string; error?: string }): string {
+export function loginPage(opts: { requestId: string; clientName?: string; returnTo?: string; error?: string; nonce?: string }): string {
   const who = opts.clientName ? `<b>${esc(opts.clientName)}</b>` : "An app";
   const back = opts.returnTo ? `<p class="muted">After signing in you are sent back to <b>${esc(opts.returnTo)}</b>. Stop if that is not where you came from.</p>` : "";
+  const guard = opts.nonce
+    ? `<script nonce="${esc(opts.nonce)}">var f=document.querySelector("form");if(f)f.addEventListener("submit",function(){var b=this.querySelector("button");if(b)b.disabled=true})</script>`
+    : "";
   return shell(
     "Allow access?",
     `<p>${who} wants read-only access to your bank accounts through this server. It reads balances and transactions. It has no payment tools.</p>${back}
@@ -70,8 +73,19 @@ export function loginPage(opts: { requestId: string; clientName?: string; return
        <label for="pw">Password</label>
        <input id="pw" type="password" name="password" autofocus autocomplete="current-password" required>
        <button type="submit">Allow access</button>
-     </form>`,
+     </form>${guard}`,
     { kind: "neutral", pill: "Sign-in request" },
+  );
+}
+
+/** Top-level navigation back to the client. A 302 after the password form is still a form navigation, and form-action blocks it. */
+export function returningPage(opts: { url: string; nonce: string }): string {
+  const href = esc(opts.url);
+  return shell(
+    "Signed in, returning to your assistant…",
+    `<p><a id="return" href="${href}">Return to your assistant</a></p>
+     <script nonce="${esc(opts.nonce)}">var a=document.getElementById("return");if(a)location.replace(a.href)</script>`,
+    { kind: "ok", pill: "Signed in", head: `<meta http-equiv="refresh" content="0;url=${href}">` },
   );
 }
 

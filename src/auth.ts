@@ -53,15 +53,21 @@ export function redirectAllowed(uri: string): boolean {
   }
 }
 
-// Chrome checks form-action against the URL a password form redirects to, not
-// only the form's own action. 'self' covers POST /login. The extra source is
-// the origin of the redirect_uri this authorize request already validated.
-export function contentSecurityPolicy(opts: { redirectUri?: string; script?: boolean } = {}): string {
+export function cspNonce(): string {
+  return randomBytes(16).toString("base64url");
+}
+
+// 'self' covers POST /login. A redirect origin is included only when this
+// document's form may be followed by a redirect to that callback. The page
+// after a successful password does not redirect the form; it navigates itself.
+export function contentSecurityPolicy(opts: { redirectUri?: string; script?: boolean; scriptNonce?: string } = {}): string {
   const targets = opts.redirectUri ? formActionSources(opts.redirectUri) : [];
+  const nonce = opts.scriptNonce && /^[A-Za-z0-9_-]+$/.test(opts.scriptNonce) ? opts.scriptNonce : undefined;
+  const scriptSrc = nonce ? `script-src 'nonce-${nonce}'` : opts.script ? "script-src 'unsafe-inline'" : undefined;
   const directives = [
     "default-src 'none'",
     "style-src 'unsafe-inline'",
-    ...(opts.script ? ["script-src 'unsafe-inline'"] : []),
+    ...(scriptSrc ? [scriptSrc] : []),
     `form-action 'self'${targets.length ? ` ${targets.join(" ")}` : ""}`,
     "frame-ancestors 'none'",
     "base-uri 'none'",
@@ -183,11 +189,12 @@ export class SingleUserProvider implements OAuthServerProvider {
     this.sweep();
     const id = token();
     this.pendingLogins.set(id, { client, params, expires: now() + LOGIN_TTL, attempts: 0 });
+    const nonce = cspNonce();
     res
       .status(200)
-      .set("Content-Security-Policy", contentSecurityPolicy({ redirectUri: params.redirectUri }))
+      .set("Content-Security-Policy", contentSecurityPolicy({ redirectUri: params.redirectUri, scriptNonce: nonce }))
       .type("html")
-      .send(loginPage({ requestId: id, clientName: client.client_name, returnTo: new URL(params.redirectUri).hostname }));
+      .send(loginPage({ requestId: id, clientName: client.client_name, returnTo: new URL(params.redirectUri).hostname, nonce }));
   }
 
   /** Called by POST /login. Returns the redirect URL on success, or an error message. */
@@ -203,7 +210,10 @@ export class SingleUserProvider implements OAuthServerProvider {
     if (!pending) {
       const fate = this.pendingFate.get(requestId) ?? "unknown";
       this.onLogin?.({ ok: false, ip, reason: `pending ${fate}` });
-      return { error: "This sign-in page has expired or the server restarted. Go back to your assistant, click Connect again, and enter the password within 30 minutes." };
+      const error = fate === "used"
+        ? "This sign-in is already completed — return to your assistant"
+        : "This sign-in page has expired or the server restarted. Go back to your assistant, click Connect again, and enter the password within 30 minutes.";
+      return { error };
     }
 
     if (!verifyPassword(password)) {
