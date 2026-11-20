@@ -9,6 +9,9 @@ updates:
     open-pull-requests-limit: 5
     cooldown:
       default-days: 7
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       npm:
         patterns: ["*"]
@@ -20,6 +23,12 @@ updates:
     open-pull-requests-limit: 5
     cooldown:
       default-days: 7
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # python 3.12 -> 3.15 is a semver minor but a runtime migration (fleet standard).
+      - dependency-name: "python"
+        update-types: ["version-update:semver-minor"]
     groups:
       docker:
         patterns: ["*"]
