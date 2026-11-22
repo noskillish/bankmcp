@@ -15,6 +15,7 @@ import { connectedPage, failedPage, loginPage, privacyPage, returningPage, setup
 import { applySetup, setupAvailable } from "./setup.ts";
 import { createServer, VERSION } from "./mcp.ts";
 import { startWatcher } from "./watcher.ts";
+import { identityFromEnv, mountIdentity } from "./identity.ts";
 
 export interface AppOptions {
   /** Mount the OAuth server and the /mcp endpoint. Off in local (stdio) mode. */
@@ -39,6 +40,9 @@ export function createApp(opts: AppOptions) {
 
   const baseUrl = new URL(config.baseUrl);
   const mcpUrl = new URL("/mcp", baseUrl);
+  // Fork: fleet identity (src/identity.ts). Unset SR_IDENTITY_URL keeps upstream behaviour.
+  const identity = opts.remote ? identityFromEnv() : null;
+  const identityBearer = identity ? mountIdentity(app, identity, mcpUrl) : null;
   const provider = new SingleUserProvider(store(), {
     onLogin: (e) => {
       const who = e.clientName ? ` for ${e.clientName}` : "";
@@ -220,7 +224,7 @@ export function createApp(opts: AppOptions) {
 
   // --- MCP endpoint (stateless: one transport per request) ---
 
-  const bearer = requireBearerAuth({
+  const bearer = identityBearer ?? requireBearerAuth({
     verifier: {
       verifyAccessToken: async (tokenValue: string) => {
         try {
