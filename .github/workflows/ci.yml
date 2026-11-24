@@ -14,7 +14,7 @@ concurrency:
 jobs:
   ci:
     name: gate
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -30,7 +30,7 @@ jobs:
   deploy:
     needs: ci
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 30
     environment:
       name: production
